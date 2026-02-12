@@ -1,0 +1,13 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "drasi_state_store_redb"
+version = "0.1.0"
+description = "PyO3 Python bindings for Drasi Redb StateStoreProvider"
+requires-python = ">=3.11"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+module-name = "drasi_state_store_redb._drasi_state_store_redb"

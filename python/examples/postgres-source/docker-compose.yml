@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: drasi_example
+      POSTGRES_USER: drasi
+      POSTGRES_PASSWORD: drasi_pass
+    command: >
+      postgres
+      -c wal_level=logical
+      -c max_replication_slots=4
+      -c max_wal_senders=4
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drasi"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
