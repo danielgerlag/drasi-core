@@ -11,25 +11,25 @@ async def main():
     )
     print("Connected to PostgreSQL. Simulating changes...")
 
-    # Insert new orders
+    # Insert a new high-value order (triggers ADD)
     await conn.execute(
         "INSERT INTO orders (customer_name, product, quantity, total_amount, status) "
         "VALUES ($1, $2, $3, $4, $5)",
         "Diana", "Tablet", 1, 799.99, "pending"
     )
-    print("  Inserted order for Diana")
-    await asyncio.sleep(1)
+    print("  Inserted order for Diana (total_amount=799.99 > 500 → ADD)")
+    await asyncio.sleep(2)
 
-    # Update existing order
+    # Update Diana's order (triggers UPDATE)
     await conn.execute(
-        "UPDATE orders SET status = 'shipped', total_amount = 1399.99 WHERE customer_name = 'Alice'"
+        "UPDATE orders SET status = 'shipped', total_amount = 999.99 WHERE customer_name = 'Diana'"
     )
-    print("  Updated Alice's order")
-    await asyncio.sleep(1)
+    print("  Updated Diana's order (total_amount=999.99, status=shipped → UPDATE)")
+    await asyncio.sleep(2)
 
-    # Delete an order
-    await conn.execute("DELETE FROM orders WHERE customer_name = 'Bob'")
-    print("  Deleted Bob's order")
+    # Delete Diana's order (triggers DELETE)
+    await conn.execute("DELETE FROM orders WHERE customer_name = 'Diana'")
+    print("  Deleted Diana's order (→ DELETE)")
 
     await conn.close()
     print("Done simulating changes")

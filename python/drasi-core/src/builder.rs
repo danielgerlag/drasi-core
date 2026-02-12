@@ -36,8 +36,6 @@ type AsyncExecutor = fn(
 fn execute_on_local_runtime(
     task: std::pin::Pin<Box<dyn std::future::Future<Output = Box<dyn std::any::Any + Send>> + Send>>,
 ) -> Box<dyn std::any::Any + Send> {
-    // Run the future on a new OS thread to avoid nested runtime issues.
-    // We use block_on from this cdylib's pyo3-async-runtimes runtime handle.
     let handle = pyo3_async_runtimes::tokio::get_runtime().handle().clone();
     std::thread::spawn(move || handle.block_on(task))
         .join()

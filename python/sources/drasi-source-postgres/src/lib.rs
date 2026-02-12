@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use _drasi_core::builder::source_to_capsule;
 use _drasi_core::errors::map_err;
-use drasi_source_postgres::{PostgresReplicationSource, PostgresSourceBuilder};
+use drasi_source_postgres::{PostgresReplicationSource, PostgresSourceBuilder, TableKeyConfig};
 use pyo3::prelude::*;
 
 #[pyclass]
@@ -88,6 +88,19 @@ impl PyPostgresSourceBuilder {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
         })?;
         self.inner = Some(builder.with_auto_start(auto_start));
+        Ok(())
+    }
+
+    /// Add a table key configuration specifying which columns form the primary key
+    /// for a given table. This ensures stable element IDs across insert/update/delete.
+    fn add_table_key(&mut self, table: &str, key_columns: Vec<String>) -> PyResult<()> {
+        let builder = self.inner.take().ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
+        })?;
+        self.inner = Some(builder.add_table_key(TableKeyConfig {
+            table: table.to_string(),
+            key_columns,
+        }));
         Ok(())
     }
 

@@ -28,6 +28,7 @@ async def main():
     pg_builder.with_password("drasi_pass")
     pg_builder.add_table("public.orders")
     pg_builder.with_slot_name("drasi_orders_slot")
+    pg_builder.add_table_key("orders", ["id"])
     pg_builder.with_auto_start(True)
     pg_source = pg_builder.build()
 

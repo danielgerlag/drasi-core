@@ -1,0 +1,27 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/drasi-core",
+    "${workspaceFolder}/drasi-lib",
+    "${workspaceFolder}/sources/drasi-source-application",
+    "${workspaceFolder}/sources/drasi-source-http",
+    "${workspaceFolder}/sources/drasi-source-grpc",
+    "${workspaceFolder}/sources/drasi-source-postgres",
+    "${workspaceFolder}/sources/drasi-source-mock",
+    "${workspaceFolder}/reactions/drasi-reaction-application",
+    "${workspaceFolder}/reactions/drasi-reaction-log",
+    "${workspaceFolder}/reactions/drasi-reaction-http",
+    "${workspaceFolder}/reactions/drasi-reaction-grpc",
+    "${workspaceFolder}/reactions/drasi-reaction-sse",
+    "${workspaceFolder}/reactions/drasi-reaction-profiler",
+    "${workspaceFolder}/reactions/drasi-reaction-storedproc-mssql",
+    "${workspaceFolder}/reactions/drasi-reaction-storedproc-mysql",
+    "${workspaceFolder}/reactions/drasi-reaction-storedproc-postgres",
+    "${workspaceFolder}/bootstrappers/drasi-bootstrap-noop",
+    "${workspaceFolder}/bootstrappers/drasi-bootstrap-scriptfile",
+    "${workspaceFolder}/bootstrappers/drasi-bootstrap-postgres",
+    "${workspaceFolder}/bootstrappers/drasi-bootstrap-application",
+    "${workspaceFolder}/indexes/drasi-index-rocksdb",
+    "${workspaceFolder}/state-stores/drasi-state-store-redb"
+  ]
+}
