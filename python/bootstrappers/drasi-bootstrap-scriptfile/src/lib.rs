@@ -9,6 +9,7 @@ use pyo3::prelude::*;
 // PyScriptFileBootstrapProviderBuilder
 // ============================================================================
 
+/// Builder for creating a ScriptFileBootstrapProvider.
 #[pyclass(name = "ScriptFileBootstrapProviderBuilder")]
 pub struct PyScriptFileBootstrapProviderBuilder {
     inner: Option<ScriptFileBootstrapProviderBuilder>,
@@ -16,6 +17,7 @@ pub struct PyScriptFileBootstrapProviderBuilder {
 
 #[pymethods]
 impl PyScriptFileBootstrapProviderBuilder {
+    /// Create a new ScriptFileBootstrapProviderBuilder.
     #[new]
     fn new() -> Self {
         Self {
@@ -23,6 +25,7 @@ impl PyScriptFileBootstrapProviderBuilder {
         }
     }
 
+    /// Set the list of script file paths to execute during bootstrap.
     fn with_file_paths(&mut self, paths: Vec<String>) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -31,6 +34,7 @@ impl PyScriptFileBootstrapProviderBuilder {
         Ok(())
     }
 
+    /// Add a single script file path to execute during bootstrap.
     fn with_file(&mut self, path: &str) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -39,6 +43,7 @@ impl PyScriptFileBootstrapProviderBuilder {
         Ok(())
     }
 
+    /// Consume the builder and return a ScriptFileBootstrapProvider.
     fn build(&mut self) -> PyResult<PyScriptFileBootstrapProvider> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -54,6 +59,7 @@ impl PyScriptFileBootstrapProviderBuilder {
 // PyScriptFileBootstrapProvider
 // ============================================================================
 
+/// Bootstrap provider that executes script files to supply initial data.
 #[pyclass(name = "ScriptFileBootstrapProvider")]
 pub struct PyScriptFileBootstrapProvider {
     inner: Mutex<Option<ScriptFileBootstrapProvider>>,
@@ -61,6 +67,7 @@ pub struct PyScriptFileBootstrapProvider {
 
 #[pymethods]
 impl PyScriptFileBootstrapProvider {
+    /// Create a new builder for this provider.
     #[staticmethod]
     fn builder() -> PyScriptFileBootstrapProviderBuilder {
         PyScriptFileBootstrapProviderBuilder {
@@ -68,6 +75,7 @@ impl PyScriptFileBootstrapProvider {
         }
     }
 
+    /// Create a provider directly from a list of script file paths.
     #[staticmethod]
     fn with_paths(paths: Vec<String>) -> Self {
         Self {
@@ -75,6 +83,7 @@ impl PyScriptFileBootstrapProvider {
         }
     }
 
+    /// Return a capsule for use with DrasiLibBuilder.
     fn into_bootstrap_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let provider = self
             .inner

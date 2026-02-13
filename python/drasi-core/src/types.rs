@@ -1,6 +1,8 @@
 use pyo3::prelude::*;
 
-/// Dispatch mode enum exposed to Python
+/// Controls how query results are dispatched to reactions.
+///
+/// Channel: point-to-point delivery. Broadcast: fan-out to all subscribers.
 #[pyclass(eq, frozen)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum DispatchMode {

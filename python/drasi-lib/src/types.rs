@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 
-/// Component status enum exposed to Python
+/// Lifecycle status of a Drasi component (source, query, or reaction).
 #[pyclass(eq, frozen)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComponentStatus {
@@ -35,7 +35,7 @@ impl From<ComponentStatus> for drasi_lib::ComponentStatus {
     }
 }
 
-/// Component type enum exposed to Python
+/// The kind of Drasi component: Source, Query, or Reaction.
 #[pyclass(eq, frozen)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComponentType {
@@ -54,7 +54,7 @@ impl From<drasi_lib::ComponentType> for ComponentType {
     }
 }
 
-/// Log level enum exposed to Python
+/// Severity level for log messages: Trace, Debug, Info, Warn, or Error.
 #[pyclass(eq, eq_int, frozen)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum LogLevel {
@@ -77,7 +77,7 @@ impl From<drasi_lib::LogLevel> for LogLevel {
     }
 }
 
-/// A lifecycle event for a component
+/// A lifecycle event emitted when a component changes status.
 #[pyclass(frozen, get_all)]
 #[derive(Debug, Clone)]
 pub struct ComponentEvent {
@@ -102,6 +102,7 @@ impl From<drasi_lib::ComponentEvent> for ComponentEvent {
 
 #[pymethods]
 impl ComponentEvent {
+    /// Return a human-readable string representation.
     fn __repr__(&self) -> String {
         format!(
             "ComponentEvent(id={:?}, type={:?}, status={:?}, message={:?})",
@@ -110,7 +111,7 @@ impl ComponentEvent {
     }
 }
 
-/// A log message from a component
+/// A log message emitted by a Drasi component.
 #[pyclass(frozen, get_all)]
 #[derive(Debug, Clone)]
 pub struct LogMessage {
@@ -137,6 +138,7 @@ impl From<drasi_lib::LogMessage> for LogMessage {
 
 #[pymethods]
 impl LogMessage {
+    /// Return a human-readable string representation.
     fn __repr__(&self) -> String {
         format!(
             "LogMessage(level={:?}, component={:?}, message={:?})",
@@ -145,7 +147,7 @@ impl LogMessage {
     }
 }
 
-/// A query result containing diffs
+/// A query result containing change diffs produced by a continuous query.
 #[pyclass(frozen, get_all)]
 #[derive(Debug)]
 pub struct QueryResult {
@@ -170,6 +172,7 @@ impl QueryResult {
 
 #[pymethods]
 impl QueryResult {
+    /// Return a human-readable string representation.
     fn __repr__(&self) -> String {
         format!(
             "QueryResult(query_id={:?}, timestamp={:?})",

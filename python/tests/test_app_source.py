@@ -20,8 +20,8 @@ async def test_push_node_insert():
     assert stream is not None
 
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    assert result["query_id"] == "test-query"
-    assert len(result["results"]) > 0
+    assert result.query_id == "test-query"
+    assert len(result.results) > 0
 
     await lib.stop()
 
@@ -38,12 +38,12 @@ async def test_push_node_update():
     props1 = make_person_props("Bob")
     await handle.send_node_insert("n2", ["Person"], props1)
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    assert result["results"][0]["type"] == "ADD"
+    assert result.results[0].diff_type == "ADD"
 
     props2 = make_person_props("Bobby")
     await handle.send_node_update("n2", ["Person"], props2)
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    assert result["results"][0]["type"] == "UPDATE"
+    assert result.results[0].diff_type == "UPDATE"
 
     await lib.stop()
 
@@ -63,7 +63,7 @@ async def test_push_node_delete():
 
     await handle.send_delete("n3", ["Person"])
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    assert result["results"][0]["type"] == "DELETE"
+    assert result.results[0].diff_type == "DELETE"
 
     await lib.stop()
 
@@ -95,8 +95,8 @@ async def test_push_relation_insert():
     await handle.send_relation_insert("r1", ["KNOWS"], rel_props.build(), "a1", "b1")
 
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    assert result["query_id"] == "test-query"
-    assert len(result["results"]) > 0
+    assert result.query_id == "test-query"
+    assert len(result.results) > 0
 
     await lib.stop()
 

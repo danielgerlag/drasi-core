@@ -2,7 +2,9 @@ use drasi_core::models::SourceMiddlewareConfig;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
-/// Python wrapper for SourceMiddlewareConfig
+/// Configuration for a source middleware pipeline stage.
+///
+/// Middleware transforms source change events before they reach queries.
 #[pyclass(name = "SourceMiddlewareConfig")]
 #[derive(Clone)]
 pub struct PySourceMiddlewareConfig {

@@ -6,7 +6,9 @@ use crate::types::{ComponentEvent, LogMessage};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-/// An event subscription that provides history + live async iteration.
+/// An event subscription that provides historical events and live async iteration.
+///
+/// Access ``history`` for past events, or use ``async for`` to receive new events.
 #[pyclass]
 pub struct EventSubscription {
     /// Historical events at time of subscription
@@ -32,6 +34,7 @@ impl EventSubscription {
 
 #[pymethods]
 impl EventSubscription {
+    /// Return an async iterator over live component events.
     fn __aiter__(slf: PyRef<'_, Self>) -> PyResult<Py<EventStream>> {
         slf.stream
             .as_ref()
@@ -42,7 +45,7 @@ impl EventSubscription {
     }
 }
 
-/// Async iterator over component events
+/// Async iterator that yields ComponentEvent objects as they occur.
 #[pyclass]
 pub struct EventStream {
     receiver: Arc<Mutex<broadcast::Receiver<drasi_lib::ComponentEvent>>>,
@@ -58,10 +61,12 @@ impl EventStream {
 
 #[pymethods]
 impl EventStream {
+    /// Return self to satisfy the async iterator protocol.
     fn __aiter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
+    /// Await the next ComponentEvent, or raise StopAsyncIteration when closed.
     fn __anext__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let rx = self.receiver.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
@@ -81,7 +86,7 @@ impl EventStream {
     }
 }
 
-/// Async iterator over log messages
+/// Async iterator that yields LogMessage objects as they occur.
 #[pyclass]
 pub struct LogStream {
     receiver: Arc<Mutex<broadcast::Receiver<drasi_lib::LogMessage>>>,
@@ -97,10 +102,12 @@ impl LogStream {
 
 #[pymethods]
 impl LogStream {
+    /// Return self to satisfy the async iterator protocol.
     fn __aiter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
+    /// Await the next LogMessage, or raise StopAsyncIteration when closed.
     fn __anext__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let rx = self.receiver.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
@@ -120,7 +127,9 @@ impl LogStream {
     }
 }
 
-/// Log subscription with history + live streaming
+/// A log subscription that provides historical log messages and live async iteration.
+///
+/// Access ``history`` for past messages, or use ``async for`` to receive new messages.
 #[pyclass]
 pub struct LogSubscription {
     #[pyo3(get)]
@@ -144,6 +153,7 @@ impl LogSubscription {
 
 #[pymethods]
 impl LogSubscription {
+    /// Return an async iterator over live log messages.
     fn __aiter__(slf: PyRef<'_, Self>) -> PyResult<Py<LogStream>> {
         slf.stream
             .as_ref()

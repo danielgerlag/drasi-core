@@ -7,6 +7,7 @@ use drasi_bootstrap_application::{
 };
 use pyo3::prelude::*;
 
+/// Builder for creating an ApplicationBootstrapProvider.
 #[pyclass(name = "ApplicationBootstrapProviderBuilder")]
 pub struct PyApplicationBootstrapProviderBuilder {
     inner: Option<ApplicationBootstrapProviderBuilder>,
@@ -14,6 +15,7 @@ pub struct PyApplicationBootstrapProviderBuilder {
 
 #[pymethods]
 impl PyApplicationBootstrapProviderBuilder {
+    /// Create a new ApplicationBootstrapProviderBuilder.
     #[new]
     fn new() -> Self {
         Self {
@@ -21,6 +23,7 @@ impl PyApplicationBootstrapProviderBuilder {
         }
     }
 
+    /// Consume the builder and return an ApplicationBootstrapProvider.
     fn build(&mut self) -> PyResult<PyApplicationBootstrapProvider> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -32,6 +35,7 @@ impl PyApplicationBootstrapProviderBuilder {
     }
 }
 
+/// Bootstrap provider that uses the application itself to supply initial data.
 #[pyclass(name = "ApplicationBootstrapProvider")]
 pub struct PyApplicationBootstrapProvider {
     inner: Mutex<Option<ApplicationBootstrapProvider>>,
@@ -39,11 +43,13 @@ pub struct PyApplicationBootstrapProvider {
 
 #[pymethods]
 impl PyApplicationBootstrapProvider {
+    /// Create a new builder for this provider.
     #[staticmethod]
     fn builder() -> PyApplicationBootstrapProviderBuilder {
         PyApplicationBootstrapProviderBuilder::new()
     }
 
+    /// Return a capsule for use with DrasiLibBuilder.with_source().
     fn into_bootstrap_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let provider = self
             .inner

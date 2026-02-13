@@ -9,6 +9,9 @@ use pyo3::prelude::*;
 // PyNoOpBootstrapProvider
 // ============================================================================
 
+/// Bootstrap provider that performs no initialization.
+///
+/// Use this when no bootstrap data is needed.
 #[pyclass(name = "NoOpBootstrapProvider")]
 pub struct PyNoOpBootstrapProvider {
     inner: Mutex<Option<NoOpBootstrapProvider>>,
@@ -16,6 +19,7 @@ pub struct PyNoOpBootstrapProvider {
 
 #[pymethods]
 impl PyNoOpBootstrapProvider {
+    /// Create a new NoOpBootstrapProvider.
     #[new]
     fn new() -> Self {
         Self {
@@ -23,6 +27,7 @@ impl PyNoOpBootstrapProvider {
         }
     }
 
+    /// Return a capsule for use with DrasiLibBuilder.
     fn into_bootstrap_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let provider = self
             .inner

@@ -15,6 +15,7 @@ use pyo3::prelude::*;
 // Config wrapper types
 // ---------------------------------------------------------------------------
 
+/// A template describing how to map webhook payload data to a graph element.
 #[pyclass(name = "ElementTemplate")]
 #[derive(Clone)]
 pub struct PyElementTemplate {
@@ -27,6 +28,14 @@ pub struct PyElementTemplate {
 
 #[pymethods]
 impl PyElementTemplate {
+    /// Create a new ElementTemplate.
+    ///
+    /// Args:
+    ///     id: Expression for the element identifier.
+    ///     labels: Labels to assign to the element.
+    ///     properties: Optional dict of property mappings.
+    ///     from_node: Source node id expression (relations only).
+    ///     to_node: Target node id expression (relations only).
     #[new]
     #[pyo3(signature = (id, labels, properties=None, from_node=None, to_node=None))]
     fn new(
@@ -71,6 +80,7 @@ impl PyElementTemplate {
     }
 }
 
+/// A condition that determines when a webhook mapping should be applied.
 #[pyclass(name = "MappingCondition")]
 #[derive(Clone)]
 pub struct PyMappingCondition {
@@ -83,6 +93,10 @@ pub struct PyMappingCondition {
 
 #[pymethods]
 impl PyMappingCondition {
+    /// Create a new MappingCondition.
+    ///
+    /// All parameters are keyword-only. Specify a header or field to match
+    /// against, with equals, contains, or regex for the comparison.
     #[new]
     #[pyo3(signature = (*, header=None, field=None, equals=None, contains=None, regex=None))]
     fn new(
@@ -159,6 +173,7 @@ fn parse_error_behavior(s: &str) -> PyResult<ErrorBehavior> {
     }
 }
 
+/// Maps an incoming webhook payload to a graph operation (insert, update, or delete).
 #[pyclass(name = "WebhookMapping")]
 #[derive(Clone)]
 pub struct PyWebhookMapping {
@@ -172,6 +187,15 @@ pub struct PyWebhookMapping {
 
 #[pymethods]
 impl PyWebhookMapping {
+    /// Create a new WebhookMapping.
+    ///
+    /// Args:
+    ///     element_type: 'node' or 'relation'.
+    ///     template: ElementTemplate describing the graph element.
+    ///     when: Optional condition for this mapping to apply.
+    ///     operation: Fixed operation type ('insert', 'update', 'delete').
+    ///     operation_from: Field name to read the operation from.
+    ///     operation_map: Dict mapping field values to operation types.
     #[new]
     #[pyo3(signature = (element_type, template, *, when=None, operation=None, operation_from=None, operation_map=None))]
     fn new(
@@ -229,6 +253,7 @@ impl PyWebhookMapping {
     }
 }
 
+/// HMAC signature verification configuration for webhook authentication.
 #[pyclass(name = "SignatureConfig")]
 #[derive(Clone)]
 pub struct PySignatureConfig {
@@ -241,6 +266,14 @@ pub struct PySignatureConfig {
 
 #[pymethods]
 impl PySignatureConfig {
+    /// Create a new SignatureConfig.
+    ///
+    /// Args:
+    ///     algorithm: 'hmac-sha1' or 'hmac-sha256'.
+    ///     secret_env: Environment variable holding the shared secret.
+    ///     header: HTTP header containing the signature.
+    ///     prefix: Optional prefix to strip from the header value.
+    ///     encoding: Signature encoding ('hex' or 'base64', default 'hex').
     #[new]
     #[pyo3(signature = (algorithm, secret_env, header, *, prefix=None, encoding=None))]
     fn new(
@@ -291,6 +324,7 @@ impl PySignatureConfig {
     }
 }
 
+/// Bearer token authentication configuration for webhook routes.
 #[pyclass(name = "BearerConfig")]
 #[derive(Clone)]
 pub struct PyBearerConfig {
@@ -299,12 +333,17 @@ pub struct PyBearerConfig {
 
 #[pymethods]
 impl PyBearerConfig {
+    /// Create a new BearerConfig.
+    ///
+    /// Args:
+    ///     token_env: Environment variable holding the expected bearer token.
     #[new]
     fn new(token_env: String) -> Self {
         Self { token_env }
     }
 }
 
+/// Authentication configuration combining signature and/or bearer strategies.
 #[pyclass(name = "AuthConfig")]
 #[derive(Clone)]
 pub struct PyAuthConfig {
@@ -314,6 +353,7 @@ pub struct PyAuthConfig {
 
 #[pymethods]
 impl PyAuthConfig {
+    /// Create a new AuthConfig with optional signature and/or bearer auth.
     #[new]
     #[pyo3(signature = (*, signature=None, bearer=None))]
     fn new(signature: Option<PySignatureConfig>, bearer: Option<PyBearerConfig>) -> Self {
@@ -336,6 +376,7 @@ impl PyAuthConfig {
     }
 }
 
+/// A webhook route that maps incoming HTTP requests to graph operations.
 #[pyclass(name = "WebhookRoute")]
 #[derive(Clone)]
 pub struct PyWebhookRoute {
@@ -348,6 +389,14 @@ pub struct PyWebhookRoute {
 
 #[pymethods]
 impl PyWebhookRoute {
+    /// Create a new WebhookRoute.
+    ///
+    /// Args:
+    ///     path: URL path for this route.
+    ///     mappings: List of WebhookMapping objects.
+    ///     methods: Accepted HTTP methods (default ``["POST"]``).
+    ///     auth: Optional authentication configuration.
+    ///     error_behavior: 'accept_and_log', 'accept_and_skip', or 'reject'.
     #[new]
     #[pyo3(signature = (path, mappings, *, methods=None, auth=None, error_behavior=None))]
     fn new(
@@ -399,6 +448,7 @@ impl PyWebhookRoute {
     }
 }
 
+/// CORS configuration for the HTTP source webhook server.
 #[pyclass(name = "CorsConfig")]
 #[derive(Clone)]
 pub struct PyCorsConfig {
@@ -413,6 +463,7 @@ pub struct PyCorsConfig {
 
 #[pymethods]
 impl PyCorsConfig {
+    /// Create a new CorsConfig with keyword-only parameters.
     #[new]
     #[pyo3(signature = (*, enabled=true, allow_origins=None, allow_methods=None, allow_headers=None, expose_headers=None, allow_credentials=None, max_age=None))]
     fn new(
@@ -460,6 +511,7 @@ impl PyCorsConfig {
     }
 }
 
+/// Top-level webhook configuration containing routes and global settings.
 #[pyclass(name = "WebhookConfig")]
 #[derive(Clone)]
 pub struct PyWebhookConfig {
@@ -470,6 +522,12 @@ pub struct PyWebhookConfig {
 
 #[pymethods]
 impl PyWebhookConfig {
+    /// Create a new WebhookConfig.
+    ///
+    /// Args:
+    ///     routes: List of WebhookRoute objects.
+    ///     error_behavior: Default error behavior for all routes.
+    ///     cors: Optional CORS configuration.
     #[new]
     #[pyo3(signature = (routes, *, error_behavior=None, cors=None))]
     fn new(
@@ -507,6 +565,7 @@ impl PyWebhookConfig {
     }
 }
 
+/// Typed configuration object for an ``HttpSource``.
 #[pyclass(name = "HttpSourceConfig")]
 #[derive(Clone)]
 pub struct PyHttpSourceConfig {
@@ -519,6 +578,14 @@ pub struct PyHttpSourceConfig {
 
 #[pymethods]
 impl PyHttpSourceConfig {
+    /// Create a new HttpSourceConfig.
+    ///
+    /// Args:
+    ///     host: HTTP server bind address.
+    ///     port: HTTP server port.
+    ///     endpoint: Optional base endpoint path.
+    ///     timeout_ms: Optional request timeout in milliseconds.
+    ///     webhooks: Optional webhook configuration.
     #[new]
     #[pyo3(signature = (host, port, *, endpoint=None, timeout_ms=None, webhooks=None))]
     fn new(
@@ -564,6 +631,9 @@ impl PyHttpSourceConfig {
 // Source builder & source
 // ---------------------------------------------------------------------------
 
+/// Builder for configuring and constructing an ``HttpSource``.
+///
+/// Use ``HttpSource.builder(id)`` or ``HttpSourceBuilder(id)`` to create.
 #[pyclass(name = "HttpSourceBuilder")]
 pub struct PyHttpSourceBuilder {
     inner: Option<HttpSourceBuilder>,
@@ -571,6 +641,10 @@ pub struct PyHttpSourceBuilder {
 
 #[pymethods]
 impl PyHttpSourceBuilder {
+    /// Create a new HttpSourceBuilder.
+    ///
+    /// Args:
+    ///     id: Unique identifier for this source.
     #[new]
     fn new(id: &str) -> Self {
         Self {
@@ -578,6 +652,7 @@ impl PyHttpSourceBuilder {
         }
     }
 
+    /// Set the HTTP server bind address.
     fn with_host(&mut self, host: &str) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -586,6 +661,7 @@ impl PyHttpSourceBuilder {
         Ok(())
     }
 
+    /// Set the HTTP server port.
     fn with_port(&mut self, port: u16) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -594,6 +670,7 @@ impl PyHttpSourceBuilder {
         Ok(())
     }
 
+    /// Set the base endpoint path.
     fn with_endpoint(&mut self, endpoint: &str) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -602,6 +679,7 @@ impl PyHttpSourceBuilder {
         Ok(())
     }
 
+    /// Set the request timeout in milliseconds.
     fn with_timeout_ms(&mut self, timeout_ms: u64) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -610,6 +688,7 @@ impl PyHttpSourceBuilder {
         Ok(())
     }
 
+    /// Set whether the source starts automatically when added to a ``DrasiLib``.
     fn with_auto_start(&mut self, auto_start: bool) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -618,8 +697,8 @@ impl PyHttpSourceBuilder {
         Ok(())
     }
 
-    /// Configure the source from a JSON string matching HttpSourceConfig.
-    /// This supports the full configuration including webhook mode.
+    /// Configure the source from a JSON string matching the HttpSourceConfig schema.
+    /// Supports the full configuration including webhook mode.
     fn with_config_json(&mut self, json_str: &str) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -632,7 +711,7 @@ impl PyHttpSourceBuilder {
         Ok(())
     }
 
-    /// Configure the source from a typed HttpSourceConfig object.
+    /// Configure the source from a typed ``HttpSourceConfig`` object.
     fn with_config(&mut self, config: &PyHttpSourceConfig) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -642,6 +721,7 @@ impl PyHttpSourceBuilder {
         Ok(())
     }
 
+    /// Consume the builder and return a configured ``HttpSource``.
     fn build(&mut self) -> PyResult<PyHttpSource> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -653,6 +733,7 @@ impl PyHttpSourceBuilder {
     }
 }
 
+/// A source that receives graph changes via HTTP webhooks.
 #[pyclass(name = "HttpSource")]
 pub struct PyHttpSource {
     inner: Mutex<Option<HttpSource>>,
@@ -660,11 +741,13 @@ pub struct PyHttpSource {
 
 #[pymethods]
 impl PyHttpSource {
+    /// Create a new ``HttpSourceBuilder`` for the given source id.
     #[staticmethod]
     fn builder(id: &str) -> PyHttpSourceBuilder {
         PyHttpSourceBuilder::new(id)
     }
 
+    /// Consume the source and return a PyCapsule for use with ``DrasiLibBuilder``.
     fn into_source_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let source = self
             .inner

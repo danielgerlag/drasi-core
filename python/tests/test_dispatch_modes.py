@@ -53,7 +53,7 @@ async def test_channel_dispatch_mode():
     await handle.send_node_insert("n1", ["Person"], props)
 
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    assert result["query_id"] == "dispatch-ch-query"
+    assert result.query_id == "dispatch-ch-query"
 
     await lib.stop()
 
@@ -73,7 +73,7 @@ async def test_broadcast_dispatch_mode():
     await handle.send_node_insert("n1", ["Person"], props)
 
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    assert result["query_id"] == "dispatch-bc-query"
+    assert result.query_id == "dispatch-bc-query"
 
     await lib.stop()
 

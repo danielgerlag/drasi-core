@@ -5,6 +5,9 @@ use _drasi_core::errors::map_err;
 use drasi_reaction_http_adaptive::{AdaptiveHttpReaction, HttpAdaptiveReactionBuilder};
 use pyo3::prelude::*;
 
+/// Builder for configuring an HTTP reaction.
+///
+/// Use ``HttpReaction.builder("my-http")`` to create a new builder.
 #[pyclass(name = "HttpReactionBuilder")]
 pub struct PyHttpReactionBuilder {
     inner: Option<HttpAdaptiveReactionBuilder>,
@@ -12,6 +15,7 @@ pub struct PyHttpReactionBuilder {
 
 #[pymethods]
 impl PyHttpReactionBuilder {
+    /// Create a new ``HttpReactionBuilder`` with the given reaction ID.
     #[new]
     fn new(id: &str) -> Self {
         Self {
@@ -19,6 +23,7 @@ impl PyHttpReactionBuilder {
         }
     }
 
+    /// Add a single query by ID to this reaction.
     fn with_query(&mut self, query_id: &str) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -27,6 +32,7 @@ impl PyHttpReactionBuilder {
         Ok(())
     }
 
+    /// Add multiple queries by ID to this reaction.
     fn with_queries(&mut self, queries: Vec<String>) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -35,6 +41,7 @@ impl PyHttpReactionBuilder {
         Ok(())
     }
 
+    /// Set the base URL for HTTP requests.
     fn with_base_url(&mut self, base_url: &str) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -43,6 +50,7 @@ impl PyHttpReactionBuilder {
         Ok(())
     }
 
+    /// Set the bearer token for authenticating HTTP requests.
     fn with_token(&mut self, token: &str) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -51,6 +59,7 @@ impl PyHttpReactionBuilder {
         Ok(())
     }
 
+    /// Set the HTTP request timeout in milliseconds.
     fn with_timeout_ms(&mut self, timeout_ms: u64) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -59,6 +68,7 @@ impl PyHttpReactionBuilder {
         Ok(())
     }
 
+    /// Set the capacity of the priority queue for ordering results.
     fn with_priority_queue_capacity(&mut self, capacity: usize) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -67,6 +77,7 @@ impl PyHttpReactionBuilder {
         Ok(())
     }
 
+    /// Set whether the reaction starts automatically when added to the Drasi instance.
     fn with_auto_start(&mut self, auto_start: bool) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -90,6 +101,7 @@ impl PyHttpReactionBuilder {
         Ok(())
     }
 
+    /// Finalize the builder and create the HttpReaction. Consumes this builder.
     fn build(&mut self) -> PyResult<PyHttpReaction> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -101,6 +113,7 @@ impl PyHttpReactionBuilder {
     }
 }
 
+/// A reaction that sends query result changes as HTTP requests.
 #[pyclass(name = "HttpReaction")]
 pub struct PyHttpReaction {
     inner: Mutex<Option<AdaptiveHttpReaction>>,
@@ -108,6 +121,7 @@ pub struct PyHttpReaction {
 
 #[pymethods]
 impl PyHttpReaction {
+    /// Create a new ``HttpReactionBuilder`` with the given reaction ID.
     #[staticmethod]
     fn builder(id: &str) -> PyHttpReactionBuilder {
         PyHttpReactionBuilder {
@@ -115,6 +129,7 @@ impl PyHttpReaction {
         }
     }
 
+    /// Return a capsule wrapping this reaction for use with ``DrasiLibBuilder``.
     fn into_reaction_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let reaction = self
             .inner

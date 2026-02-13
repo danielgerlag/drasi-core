@@ -16,11 +16,11 @@ async def test_insert_produces_add_diff():
     await handle.send_node_insert("n1", ["Person"], props)
 
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    diffs = result["results"]
+    diffs = result.results
     assert len(diffs) >= 1
     add_diff = diffs[0]
-    assert add_diff["type"] == "ADD"
-    assert "data" in add_diff
+    assert add_diff.diff_type == "ADD"
+    assert add_diff.data is not None
 
     await lib.stop()
 
@@ -44,13 +44,13 @@ async def test_update_produces_update_diff():
     await handle.send_node_update("n1", ["Person"], props2)
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
 
-    diffs = result["results"]
+    diffs = result.results
     assert len(diffs) >= 1
 
     update_diff = diffs[0]
-    assert update_diff["type"] == "UPDATE"
-    assert "before" in update_diff
-    assert "after" in update_diff
+    assert update_diff.diff_type == "UPDATE"
+    assert update_diff.before is not None
+    assert update_diff.after is not None
 
     await lib.stop()
 
@@ -70,10 +70,10 @@ async def test_delete_produces_delete_diff():
     await handle.send_delete("n2", ["Person"])
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
 
-    diffs = result["results"]
+    diffs = result.results
     assert len(diffs) >= 1
-    assert diffs[0]["type"] == "DELETE"
-    assert "data" in diffs[0]
+    assert diffs[0].diff_type == "DELETE"
+    assert diffs[0].data is not None
 
     await lib.stop()
 
@@ -92,12 +92,12 @@ async def test_aggregation_count():
     props = make_person_props("Alice")
     await handle.send_node_insert("c1", ["Person"], props)
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    assert len(result["results"]) >= 1
+    assert len(result.results) >= 1
 
     props2 = make_person_props("Bob")
     await handle.send_node_insert("c2", ["Person"], props2)
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    assert len(result["results"]) >= 1
+    assert len(result.results) >= 1
 
     await lib.stop()
 
@@ -116,11 +116,11 @@ async def test_aggregation_sum():
     props = make_person_props("Alice", age=30)
     await handle.send_node_insert("s1", ["Person"], props)
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    assert len(result["results"]) >= 1
+    assert len(result.results) >= 1
 
     props2 = make_person_props("Bob", age=25)
     await handle.send_node_insert("s2", ["Person"], props2)
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    assert len(result["results"]) >= 1
+    assert len(result.results) >= 1
 
     await lib.stop()

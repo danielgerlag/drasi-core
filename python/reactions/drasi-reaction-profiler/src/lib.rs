@@ -5,6 +5,9 @@ use _drasi_core::errors::map_err;
 use drasi_reaction_profiler::{ProfilerReaction, ProfilerReactionBuilder};
 use pyo3::prelude::*;
 
+/// Builder for configuring a profiler reaction.
+///
+/// Use ``ProfilerReaction.builder("my-profiler")`` to create a new builder.
 #[pyclass(name = "ProfilerReactionBuilder")]
 pub struct PyProfilerReactionBuilder {
     inner: Option<ProfilerReactionBuilder>,
@@ -12,6 +15,7 @@ pub struct PyProfilerReactionBuilder {
 
 #[pymethods]
 impl PyProfilerReactionBuilder {
+    /// Create a new ``ProfilerReactionBuilder`` with the given reaction ID.
     #[new]
     fn new(id: &str) -> Self {
         Self {
@@ -19,6 +23,7 @@ impl PyProfilerReactionBuilder {
         }
     }
 
+    /// Add a single query by ID to this reaction.
     fn with_query(&mut self, query_id: &str) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -27,6 +32,7 @@ impl PyProfilerReactionBuilder {
         Ok(())
     }
 
+    /// Add multiple queries by ID to this reaction.
     fn with_queries(&mut self, queries: Vec<String>) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -35,6 +41,7 @@ impl PyProfilerReactionBuilder {
         Ok(())
     }
 
+    /// Set the window size for the profiling metrics window.
     fn with_window_size(&mut self, size: usize) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -43,6 +50,7 @@ impl PyProfilerReactionBuilder {
         Ok(())
     }
 
+    /// Set the interval in seconds between profiling reports.
     fn with_report_interval_secs(&mut self, secs: u64) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -51,6 +59,7 @@ impl PyProfilerReactionBuilder {
         Ok(())
     }
 
+    /// Set the capacity of the priority queue for ordering results.
     fn with_priority_queue_capacity(&mut self, capacity: usize) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -59,6 +68,7 @@ impl PyProfilerReactionBuilder {
         Ok(())
     }
 
+    /// Set whether the reaction starts automatically when added to the Drasi instance.
     fn with_auto_start(&mut self, auto_start: bool) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -67,6 +77,7 @@ impl PyProfilerReactionBuilder {
         Ok(())
     }
 
+    /// Finalize the builder and create the ProfilerReaction. Consumes this builder.
     fn build(&mut self) -> PyResult<PyProfilerReaction> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -78,6 +89,7 @@ impl PyProfilerReactionBuilder {
     }
 }
 
+/// A reaction that collects and reports performance profiling metrics.
 #[pyclass(name = "ProfilerReaction")]
 pub struct PyProfilerReaction {
     inner: Mutex<Option<ProfilerReaction>>,
@@ -85,6 +97,7 @@ pub struct PyProfilerReaction {
 
 #[pymethods]
 impl PyProfilerReaction {
+    /// Create a new ``ProfilerReactionBuilder`` with the given reaction ID.
     #[staticmethod]
     fn builder(id: &str) -> PyProfilerReactionBuilder {
         PyProfilerReactionBuilder {
@@ -92,6 +105,7 @@ impl PyProfilerReaction {
         }
     }
 
+    /// Return a capsule wrapping this reaction for use with ``DrasiLibBuilder``.
     fn into_reaction_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let reaction = self
             .inner

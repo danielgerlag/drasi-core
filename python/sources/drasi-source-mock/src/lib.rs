@@ -5,6 +5,9 @@ use _drasi_core::errors::map_err;
 use drasi_source_mock::{MockSource, MockSourceBuilder};
 use pyo3::prelude::*;
 
+/// Builder for configuring and constructing a ``MockSource``.
+///
+/// Use ``MockSource.builder(id)`` or ``MockSourceBuilder(id)`` to create.
 #[pyclass(name = "MockSourceBuilder")]
 pub struct PyMockSourceBuilder {
     inner: Option<MockSourceBuilder>,
@@ -12,6 +15,10 @@ pub struct PyMockSourceBuilder {
 
 #[pymethods]
 impl PyMockSourceBuilder {
+    /// Create a new MockSourceBuilder.
+    ///
+    /// Args:
+    ///     id: Unique identifier for this source.
     #[new]
     fn new(id: &str) -> Self {
         Self {
@@ -19,6 +26,7 @@ impl PyMockSourceBuilder {
         }
     }
 
+    /// Set the polling interval in milliseconds.
     fn with_interval_ms(&mut self, interval_ms: u64) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -27,6 +35,7 @@ impl PyMockSourceBuilder {
         Ok(())
     }
 
+    /// Set whether the source starts automatically when added to a ``DrasiLib``.
     fn with_auto_start(&mut self, auto_start: bool) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -35,6 +44,7 @@ impl PyMockSourceBuilder {
         Ok(())
     }
 
+    /// Consume the builder and return a configured ``MockSource``.
     fn build(&mut self) -> PyResult<PyMockSource> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -46,6 +56,7 @@ impl PyMockSourceBuilder {
     }
 }
 
+/// A mock source for testing that generates synthetic graph changes.
 #[pyclass(name = "MockSource")]
 pub struct PyMockSource {
     inner: Mutex<Option<MockSource>>,
@@ -53,11 +64,13 @@ pub struct PyMockSource {
 
 #[pymethods]
 impl PyMockSource {
+    /// Create a new ``MockSourceBuilder`` for the given source id.
     #[staticmethod]
     fn builder(id: &str) -> PyMockSourceBuilder {
         PyMockSourceBuilder::new(id)
     }
 
+    /// Consume the source and return a PyCapsule for use with ``DrasiLibBuilder``.
     fn into_source_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let source = self
             .inner

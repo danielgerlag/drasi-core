@@ -7,7 +7,10 @@ use _drasi_core::builder::{
 use _drasi_core::errors::map_err;
 use _drasi_middleware::PySourceMiddlewareConfig;
 
-/// Fluent builder for Query configurations
+/// Fluent builder for query configurations.
+///
+/// Use Query.cypher(id) or Query.gql(id) to create a builder,
+/// then chain setter methods and call build() to produce a QueryConfig.
 #[pyclass]
 pub struct Query {
     inner: Option<drasi_lib::builder::Query>,
@@ -116,7 +119,7 @@ impl Query {
         Ok(())
     }
 
-    /// Build the query config
+    /// Consume the builder and return a QueryConfig.
     fn build(&mut self) -> PyResult<PyQueryConfig> {
         let inner = self
             .inner
@@ -128,13 +131,17 @@ impl Query {
     }
 }
 
-/// Wrapper for QueryConfig (opaque to Python, passed to builder)
+/// Opaque query configuration produced by Query.build().
+///
+/// Pass this to DrasiLibBuilder.with_query() or DrasiLib.add_query().
 #[pyclass(name = "QueryConfig")]
 pub struct PyQueryConfig {
     pub(crate) inner: Option<drasi_lib::QueryConfig>,
 }
 
-/// Fluent builder for DrasiLib instances
+/// Fluent builder for constructing and initializing a DrasiLib instance.
+///
+/// Add sources, queries, reactions, and optional providers before calling build().
 #[pyclass]
 pub struct DrasiLibBuilder {
     inner: Option<drasi_lib::DrasiLibBuilder>,
@@ -142,6 +149,7 @@ pub struct DrasiLibBuilder {
 
 #[pymethods]
 impl DrasiLibBuilder {
+    /// Create a new DrasiLibBuilder.
     #[new]
     fn new() -> Self {
         Self {
@@ -231,7 +239,7 @@ impl DrasiLibBuilder {
         Ok(())
     }
 
-    /// Build and initialize the DrasiLib instance
+    /// Consume the builder and asynchronously initialize a DrasiLib instance.
     fn build<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let inner = self
             .inner

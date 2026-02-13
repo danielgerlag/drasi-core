@@ -5,6 +5,9 @@ use _drasi_core::errors::map_err;
 use drasi_reaction_sse::{SseReaction, SseReactionBuilder};
 use pyo3::prelude::*;
 
+/// Builder for configuring an SSE reaction.
+///
+/// Use ``SseReaction.builder("my-sse")`` to create a new builder.
 #[pyclass(name = "SseReactionBuilder")]
 pub struct PySseReactionBuilder {
     inner: Option<SseReactionBuilder>,
@@ -12,6 +15,7 @@ pub struct PySseReactionBuilder {
 
 #[pymethods]
 impl PySseReactionBuilder {
+    /// Create a new ``SseReactionBuilder`` with the given reaction ID.
     #[new]
     fn new(id: &str) -> Self {
         Self {
@@ -19,6 +23,7 @@ impl PySseReactionBuilder {
         }
     }
 
+    /// Add a single query by ID to this reaction.
     fn with_query(&mut self, query_id: &str) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -27,6 +32,7 @@ impl PySseReactionBuilder {
         Ok(())
     }
 
+    /// Add multiple queries by ID to this reaction.
     fn with_queries(&mut self, queries: Vec<String>) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -35,6 +41,7 @@ impl PySseReactionBuilder {
         Ok(())
     }
 
+    /// Set the hostname or IP address the SSE server binds to.
     fn with_host(&mut self, host: &str) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -43,6 +50,7 @@ impl PySseReactionBuilder {
         Ok(())
     }
 
+    /// Set the port the SSE server listens on.
     fn with_port(&mut self, port: u16) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -51,6 +59,7 @@ impl PySseReactionBuilder {
         Ok(())
     }
 
+    /// Set the SSE endpoint path (e.g. ``"/events"``).
     fn with_sse_path(&mut self, path: &str) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -59,6 +68,7 @@ impl PySseReactionBuilder {
         Ok(())
     }
 
+    /// Set the heartbeat interval in milliseconds for keep-alive messages.
     fn with_heartbeat_interval_ms(&mut self, interval_ms: u64) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -67,6 +77,7 @@ impl PySseReactionBuilder {
         Ok(())
     }
 
+    /// Set the capacity of the priority queue for ordering results.
     fn with_priority_queue_capacity(&mut self, capacity: usize) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -75,6 +86,7 @@ impl PySseReactionBuilder {
         Ok(())
     }
 
+    /// Set whether the reaction starts automatically when added to the Drasi instance.
     fn with_auto_start(&mut self, auto_start: bool) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -83,6 +95,7 @@ impl PySseReactionBuilder {
         Ok(())
     }
 
+    /// Finalize the builder and create the SseReaction. Consumes this builder.
     fn build(&mut self) -> PyResult<PySseReaction> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -94,6 +107,7 @@ impl PySseReactionBuilder {
     }
 }
 
+/// A reaction that streams query result changes over Server-Sent Events.
 #[pyclass(name = "SseReaction")]
 pub struct PySseReaction {
     inner: Mutex<Option<SseReaction>>,
@@ -101,6 +115,7 @@ pub struct PySseReaction {
 
 #[pymethods]
 impl PySseReaction {
+    /// Create a new ``SseReactionBuilder`` with the given reaction ID.
     #[staticmethod]
     fn builder(id: &str) -> PySseReactionBuilder {
         PySseReactionBuilder {
@@ -108,6 +123,7 @@ impl PySseReaction {
         }
     }
 
+    /// Return a capsule wrapping this reaction for use with ``DrasiLibBuilder``.
     fn into_reaction_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let reaction = self
             .inner

@@ -5,6 +5,9 @@ use _drasi_core::errors::map_err;
 use drasi_bootstrap_postgres::{PostgresBootstrapProvider, PostgresBootstrapProviderBuilder};
 use pyo3::prelude::*;
 
+/// Builder for creating a PostgresBootstrapProvider.
+///
+/// Configure connection details and tables before calling build().
 #[pyclass(name = "PostgresBootstrapProviderBuilder")]
 pub struct PyPostgresBootstrapProviderBuilder {
     inner: Option<PostgresBootstrapProviderBuilder>,
@@ -12,6 +15,7 @@ pub struct PyPostgresBootstrapProviderBuilder {
 
 #[pymethods]
 impl PyPostgresBootstrapProviderBuilder {
+    /// Create a new PostgresBootstrapProviderBuilder.
     #[new]
     fn new() -> Self {
         Self {
@@ -19,6 +23,7 @@ impl PyPostgresBootstrapProviderBuilder {
         }
     }
 
+    /// Set the PostgreSQL host address.
     fn with_host(&mut self, host: &str) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -27,6 +32,7 @@ impl PyPostgresBootstrapProviderBuilder {
         Ok(())
     }
 
+    /// Set the PostgreSQL port number.
     fn with_port(&mut self, port: u16) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -35,6 +41,7 @@ impl PyPostgresBootstrapProviderBuilder {
         Ok(())
     }
 
+    /// Set the PostgreSQL database name.
     fn with_database(&mut self, database: &str) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -43,6 +50,7 @@ impl PyPostgresBootstrapProviderBuilder {
         Ok(())
     }
 
+    /// Set the PostgreSQL user for authentication.
     fn with_user(&mut self, user: &str) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -51,6 +59,7 @@ impl PyPostgresBootstrapProviderBuilder {
         Ok(())
     }
 
+    /// Set the PostgreSQL password for authentication.
     fn with_password(&mut self, password: &str) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -59,6 +68,7 @@ impl PyPostgresBootstrapProviderBuilder {
         Ok(())
     }
 
+    /// Set the list of tables to bootstrap from.
     fn with_tables(&mut self, tables: Vec<String>) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -67,6 +77,7 @@ impl PyPostgresBootstrapProviderBuilder {
         Ok(())
     }
 
+    /// Add a single table to bootstrap from.
     fn with_table(&mut self, table: &str) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -75,6 +86,7 @@ impl PyPostgresBootstrapProviderBuilder {
         Ok(())
     }
 
+    /// Consume the builder and return a PostgresBootstrapProvider.
     fn build(&mut self) -> PyResult<PyPostgresBootstrapProvider> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -86,6 +98,7 @@ impl PyPostgresBootstrapProviderBuilder {
     }
 }
 
+/// Bootstrap provider that loads initial data from a PostgreSQL database.
 #[pyclass(name = "PostgresBootstrapProvider")]
 pub struct PyPostgresBootstrapProvider {
     inner: Mutex<Option<PostgresBootstrapProvider>>,
@@ -93,11 +106,13 @@ pub struct PyPostgresBootstrapProvider {
 
 #[pymethods]
 impl PyPostgresBootstrapProvider {
+    /// Create a new builder for this provider.
     #[staticmethod]
     fn builder() -> PyPostgresBootstrapProviderBuilder {
         PyPostgresBootstrapProviderBuilder::new()
     }
 
+    /// Return a capsule for use with DrasiLibBuilder.
     fn into_bootstrap_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let provider = self
             .inner

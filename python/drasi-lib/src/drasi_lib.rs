@@ -6,7 +6,9 @@ use crate::builder::PyQueryConfig;
 use crate::streaming::{EventSubscription, LogSubscription};
 use crate::types::ComponentStatus;
 
-/// The main DrasiLib instance exposed to Python
+/// The main Drasi runtime instance.
+///
+/// Manages sources, queries, and reactions. Created via DrasiLibBuilder.build().
 #[pyclass(name = "DrasiLib")]
 pub struct PyDrasiLib {
     inner: drasi_lib::DrasiLib,
@@ -368,6 +370,7 @@ impl PyDrasiLib {
         })
     }
 
+    /// Return a string representation of this DrasiLib instance.
     fn __repr__(&self) -> String {
         format!("DrasiLib(id={:?})", self.inner.get_config().id)
     }

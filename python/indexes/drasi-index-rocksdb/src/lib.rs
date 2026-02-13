@@ -5,6 +5,12 @@ use _drasi_core::builder::index_to_capsule;
 use _drasi_core::errors::map_err;
 use pyo3::prelude::*;
 
+/// Persistent index provider backed by RocksDB.
+///
+/// Args:
+///     path: Directory path for the RocksDB database files.
+///     enable_archive: Enable archive mode for historical queries.
+///     direct_io: Use direct I/O for disk access.
 #[pyclass(name = "RocksDbIndexProvider")]
 pub struct PyRocksDbIndexProvider {
     inner: Mutex<Option<RocksDbIndexProvider>>,
@@ -12,6 +18,7 @@ pub struct PyRocksDbIndexProvider {
 
 #[pymethods]
 impl PyRocksDbIndexProvider {
+    /// Create a new RocksDbIndexProvider.
     #[new]
     #[pyo3(signature = (path, enable_archive=false, direct_io=false))]
     fn new(path: &str, enable_archive: bool, direct_io: bool) -> Self {
@@ -24,6 +31,7 @@ impl PyRocksDbIndexProvider {
         }
     }
 
+    /// Return a capsule for use with DrasiLibBuilder.with_index_provider().
     fn into_index_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let provider = self
             .inner

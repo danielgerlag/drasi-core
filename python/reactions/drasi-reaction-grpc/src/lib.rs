@@ -5,6 +5,9 @@ use _drasi_core::errors::map_err;
 use drasi_reaction_grpc_adaptive::{AdaptiveGrpcReaction, GrpcAdaptiveReactionBuilder};
 use pyo3::prelude::*;
 
+/// Builder for configuring a gRPC reaction.
+///
+/// Use ``GrpcReaction.builder("my-grpc")`` to create a new builder.
 #[pyclass(name = "GrpcReactionBuilder")]
 pub struct PyGrpcReactionBuilder {
     inner: Option<GrpcAdaptiveReactionBuilder>,
@@ -12,6 +15,7 @@ pub struct PyGrpcReactionBuilder {
 
 #[pymethods]
 impl PyGrpcReactionBuilder {
+    /// Create a new ``GrpcReactionBuilder`` with the given reaction ID.
     #[new]
     fn new(id: &str) -> Self {
         Self {
@@ -19,6 +23,7 @@ impl PyGrpcReactionBuilder {
         }
     }
 
+    /// Add a single query by ID to this reaction.
     fn with_query(&mut self, query_id: &str) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -27,6 +32,7 @@ impl PyGrpcReactionBuilder {
         Ok(())
     }
 
+    /// Add multiple queries by ID to this reaction.
     fn with_queries(&mut self, queries: Vec<String>) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -35,6 +41,7 @@ impl PyGrpcReactionBuilder {
         Ok(())
     }
 
+    /// Set the gRPC server endpoint URL.
     fn with_endpoint(&mut self, endpoint: &str) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -43,6 +50,7 @@ impl PyGrpcReactionBuilder {
         Ok(())
     }
 
+    /// Set the gRPC request timeout in milliseconds.
     fn with_timeout_ms(&mut self, timeout_ms: u64) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -51,6 +59,7 @@ impl PyGrpcReactionBuilder {
         Ok(())
     }
 
+    /// Set the maximum number of retry attempts for failed requests.
     fn with_max_retries(&mut self, retries: u32) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -59,6 +68,7 @@ impl PyGrpcReactionBuilder {
         Ok(())
     }
 
+    /// Set the capacity of the priority queue for ordering results.
     fn with_priority_queue_capacity(&mut self, capacity: usize) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -67,6 +77,7 @@ impl PyGrpcReactionBuilder {
         Ok(())
     }
 
+    /// Set whether the reaction starts automatically when added to the Drasi instance.
     fn with_auto_start(&mut self, auto_start: bool) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -75,6 +86,7 @@ impl PyGrpcReactionBuilder {
         Ok(())
     }
 
+    /// Set the batch size (alias for ``with_max_batch_size``).
     fn with_batch_size(&mut self, batch_size: usize) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -83,6 +95,7 @@ impl PyGrpcReactionBuilder {
         Ok(())
     }
 
+    /// Set the minimum batch size for batched gRPC requests.
     fn with_min_batch_size(&mut self, size: usize) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -91,6 +104,7 @@ impl PyGrpcReactionBuilder {
         Ok(())
     }
 
+    /// Set the maximum batch size for batched gRPC requests.
     fn with_max_batch_size(&mut self, size: usize) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -99,6 +113,7 @@ impl PyGrpcReactionBuilder {
         Ok(())
     }
 
+    /// Add a metadata key-value pair to gRPC requests.
     fn with_metadata(&mut self, key: &str, value: &str) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -107,6 +122,7 @@ impl PyGrpcReactionBuilder {
         Ok(())
     }
 
+    /// Finalize the builder and create the GrpcReaction. Consumes this builder.
     fn build(&mut self) -> PyResult<PyGrpcReaction> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -118,6 +134,7 @@ impl PyGrpcReactionBuilder {
     }
 }
 
+/// A reaction that sends query result changes via gRPC.
 #[pyclass(name = "GrpcReaction")]
 pub struct PyGrpcReaction {
     inner: Mutex<Option<AdaptiveGrpcReaction>>,
@@ -125,6 +142,7 @@ pub struct PyGrpcReaction {
 
 #[pymethods]
 impl PyGrpcReaction {
+    /// Create a new ``GrpcReactionBuilder`` with the given reaction ID.
     #[staticmethod]
     fn builder(id: &str) -> PyGrpcReactionBuilder {
         PyGrpcReactionBuilder {
@@ -132,6 +150,7 @@ impl PyGrpcReaction {
         }
     }
 
+    /// Return a capsule wrapping this reaction for use with ``DrasiLibBuilder``.
     fn into_reaction_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let reaction = self
             .inner

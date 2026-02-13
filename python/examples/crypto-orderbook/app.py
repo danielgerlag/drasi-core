@@ -221,10 +221,10 @@ def _start_workers(state, source_handle,
         if bids_stream is None:
             return
         async for result in bids_stream:
-            for r in result.get("results", []):
-                data = r.get("data", {})
+            for r in result.results:
+                data = r.data or {}
                 rid = data.get("id", "")
-                rtype = r.get("type", "")
+                rtype = r.diff_type
                 with state.lock:
                     if rtype in ("ADD", "UPDATE"):
                         state.open_bids[rid] = data
@@ -240,10 +240,10 @@ def _start_workers(state, source_handle,
         if asks_stream is None:
             return
         async for result in asks_stream:
-            for r in result.get("results", []):
-                data = r.get("data", {})
+            for r in result.results:
+                data = r.data or {}
                 rid = data.get("id", "")
-                rtype = r.get("type", "")
+                rtype = r.diff_type
                 with state.lock:
                     if rtype in ("ADD", "UPDATE"):
                         state.open_asks[rid] = data
@@ -257,10 +257,10 @@ def _start_workers(state, source_handle,
         if trades_stream is None:
             return
         async for result in trades_stream:
-            for r in result.get("results", []):
-                data = r.get("data", {})
+            for r in result.results:
+                data = r.data or {}
                 rid = data.get("id", "")
-                rtype = r.get("type", "")
+                rtype = r.diff_type
                 with state.lock:
                     if rtype == "ADD":
                         state.trades[rid] = data
@@ -275,10 +275,10 @@ def _start_workers(state, source_handle,
         if match_stream is None:
             return
         async for result in match_stream:
-            for r in result.get("results", []):
-                if r.get("type") not in ("ADD", "UPDATE"):
+            for r in result.results:
+                if r.diff_type not in ("ADD", "UPDATE"):
                     continue
-                data = r.get("data", {})
+                data = r.data or {}
                 bid_id = data.get("bid_id", "")
                 ask_id = data.get("ask_id", "")
                 bid_price = float(data.get("bid_price", 0))

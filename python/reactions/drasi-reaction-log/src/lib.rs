@@ -9,6 +9,9 @@ use pyo3::prelude::*;
 // PyLogReactionBuilder
 // ============================================================================
 
+/// Builder for configuring a log reaction.
+///
+/// Use ``LogReaction.builder("my-log")`` to create a new builder.
 #[pyclass(name = "LogReactionBuilder")]
 pub struct PyLogReactionBuilder {
     inner: Option<LogReactionBuilder>,
@@ -16,6 +19,7 @@ pub struct PyLogReactionBuilder {
 
 #[pymethods]
 impl PyLogReactionBuilder {
+    /// Create a new ``LogReactionBuilder`` with the given reaction ID.
     #[new]
     fn new(id: &str) -> Self {
         Self {
@@ -23,6 +27,7 @@ impl PyLogReactionBuilder {
         }
     }
 
+    /// Add a single query by ID to this reaction.
     fn with_query(&mut self, query_id: &str) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -31,6 +36,7 @@ impl PyLogReactionBuilder {
         Ok(())
     }
 
+    /// Add multiple queries by ID to this reaction.
     fn with_queries(&mut self, queries: Vec<String>) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -39,6 +45,7 @@ impl PyLogReactionBuilder {
         Ok(())
     }
 
+    /// Set the capacity of the priority queue for ordering results.
     fn with_priority_queue_capacity(&mut self, capacity: usize) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -47,6 +54,7 @@ impl PyLogReactionBuilder {
         Ok(())
     }
 
+    /// Set whether the reaction starts automatically when added to the Drasi instance.
     fn with_auto_start(&mut self, auto_start: bool) -> PyResult<()> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -55,6 +63,7 @@ impl PyLogReactionBuilder {
         Ok(())
     }
 
+    /// Set the default log template for added, updated, and deleted events.
     #[pyo3(signature = (added=None, updated=None, deleted=None))]
     fn with_default_template(
         &mut self,
@@ -83,6 +92,7 @@ impl PyLogReactionBuilder {
         Ok(())
     }
 
+    /// Add a query-specific route with custom log templates for each event type.
     #[pyo3(signature = (query_id, added=None, updated=None, deleted=None))]
     fn with_route(
         &mut self,
@@ -112,6 +122,7 @@ impl PyLogReactionBuilder {
         Ok(())
     }
 
+    /// Finalize the builder and create the LogReaction. Consumes this builder.
     fn build(&mut self) -> PyResult<PyLogReaction> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -127,6 +138,7 @@ impl PyLogReactionBuilder {
 // PyLogReaction
 // ============================================================================
 
+/// A reaction that logs query result changes using configurable templates.
 #[pyclass(name = "LogReaction")]
 pub struct PyLogReaction {
     inner: Mutex<Option<LogReaction>>,
@@ -134,6 +146,7 @@ pub struct PyLogReaction {
 
 #[pymethods]
 impl PyLogReaction {
+    /// Create a new ``LogReactionBuilder`` with the given reaction ID.
     #[staticmethod]
     fn builder(id: &str) -> PyLogReactionBuilder {
         PyLogReactionBuilder {
@@ -141,6 +154,7 @@ impl PyLogReaction {
         }
     }
 
+    /// Return a capsule wrapping this reaction for use with ``DrasiLibBuilder``.
     fn into_reaction_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let reaction = self
             .inner

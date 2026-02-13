@@ -5,6 +5,10 @@ use _drasi_core::builder::state_store_to_capsule;
 use _drasi_core::errors::map_err;
 use pyo3::prelude::*;
 
+/// Persistent state store provider backed by redb.
+///
+/// Args:
+///     path: File path for the redb database.
 #[pyclass(name = "RedbStateStoreProvider")]
 pub struct PyRedbStateStoreProvider {
     inner: Mutex<Option<RedbStateStoreProvider>>,
@@ -12,6 +16,7 @@ pub struct PyRedbStateStoreProvider {
 
 #[pymethods]
 impl PyRedbStateStoreProvider {
+    /// Create a new RedbStateStoreProvider at the given file path.
     #[new]
     fn new(path: &str) -> PyResult<Self> {
         let provider = RedbStateStoreProvider::new(path).map_err(map_err)?;
@@ -20,6 +25,7 @@ impl PyRedbStateStoreProvider {
         })
     }
 
+    /// Return a capsule for use with DrasiLibBuilder.with_state_store_provider().
     fn into_state_store_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let provider = self
             .inner

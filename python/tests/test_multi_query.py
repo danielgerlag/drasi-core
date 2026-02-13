@@ -59,8 +59,8 @@ async def test_two_queries_independent_results():
     result1 = await asyncio.wait_for(stream1.__anext__(), timeout=5.0)
     result2 = await asyncio.wait_for(stream2.__anext__(), timeout=5.0)
 
-    assert result1["query_id"] == "query-name"
-    assert result2["query_id"] == "query-age"
+    assert result1.query_id == "query-name"
+    assert result2.query_id == "query-age"
 
     await lib.stop()
 
@@ -110,7 +110,7 @@ async def test_reaction_subscribes_to_multiple_queries():
     except (asyncio.TimeoutError, StopAsyncIteration):
         pass
 
-    query_ids = {r["query_id"] for r in results}
+    query_ids = {r.query_id for r in results}
     assert len(query_ids) >= 1  # At least one query produced results
 
     await lib.stop()

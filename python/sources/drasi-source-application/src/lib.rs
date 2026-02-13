@@ -8,7 +8,9 @@ use drasi_source_application::{
 };
 use pyo3::prelude::*;
 
-/// Wraps `ElementPropertyMap` as an opaque Python type.
+/// An opaque property map holding key-value pairs for graph element properties.
+///
+/// Built via ``PropertyMapBuilder`` and consumed when passed to source handle methods.
 #[pyclass(name = "PropertyMap")]
 pub struct PyPropertyMap {
     inner: Mutex<Option<drasi_core::models::ElementPropertyMap>>,
@@ -26,7 +28,9 @@ impl PyPropertyMap {
     }
 }
 
-/// Builder for `PyPropertyMap`.
+/// Builder for constructing a ``PropertyMap`` with typed key-value entries.
+///
+/// Call ``build()`` to produce the final ``PropertyMap``.
 #[pyclass(name = "PropertyMapBuilder")]
 pub struct PyPropertyMapBuilder {
     inner: Option<PropertyMapBuilder>,
@@ -34,6 +38,7 @@ pub struct PyPropertyMapBuilder {
 
 #[pymethods]
 impl PyPropertyMapBuilder {
+    /// Create a new, empty PropertyMapBuilder.
     #[new]
     fn new() -> Self {
         Self {
@@ -41,6 +46,7 @@ impl PyPropertyMapBuilder {
         }
     }
 
+    /// Set a string property on the map.
     fn with_string(&mut self, key: &str, value: &str) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -49,6 +55,7 @@ impl PyPropertyMapBuilder {
         Ok(())
     }
 
+    /// Set an integer property on the map.
     fn with_integer(&mut self, key: &str, value: i64) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -57,6 +64,7 @@ impl PyPropertyMapBuilder {
         Ok(())
     }
 
+    /// Set a float property on the map.
     fn with_float(&mut self, key: &str, value: f64) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -65,6 +73,7 @@ impl PyPropertyMapBuilder {
         Ok(())
     }
 
+    /// Set a boolean property on the map.
     fn with_bool(&mut self, key: &str, value: bool) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -73,6 +82,7 @@ impl PyPropertyMapBuilder {
         Ok(())
     }
 
+    /// Set a null property on the map.
     fn with_null(&mut self, key: &str) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -81,6 +91,7 @@ impl PyPropertyMapBuilder {
         Ok(())
     }
 
+    /// Consume the builder and return a ``PropertyMap``.
     fn build(&mut self) -> PyResult<PyPropertyMap> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -91,7 +102,9 @@ impl PyPropertyMapBuilder {
     }
 }
 
-/// Wraps `ApplicationSourceHandle` for Python.
+/// A clonable handle for pushing graph changes to an ``ApplicationSource``.
+///
+/// Obtained via ``ApplicationSource.get_handle()``.
 #[pyclass(name = "ApplicationSourceHandle")]
 #[derive(Clone)]
 pub struct PyApplicationSourceHandle {
@@ -100,6 +113,7 @@ pub struct PyApplicationSourceHandle {
 
 #[pymethods]
 impl PyApplicationSourceHandle {
+    /// Insert a new node into the source graph.
     fn send_node_insert<'py>(
         &self,
         py: Python<'py>,
@@ -118,6 +132,7 @@ impl PyApplicationSourceHandle {
         })
     }
 
+    /// Update an existing node in the source graph.
     fn send_node_update<'py>(
         &self,
         py: Python<'py>,
@@ -136,6 +151,7 @@ impl PyApplicationSourceHandle {
         })
     }
 
+    /// Delete a node or relation from the source graph.
     fn send_delete<'py>(
         &self,
         py: Python<'py>,
@@ -149,6 +165,7 @@ impl PyApplicationSourceHandle {
         })
     }
 
+    /// Insert a new relation between two nodes in the source graph.
     fn send_relation_insert<'py>(
         &self,
         py: Python<'py>,
@@ -169,6 +186,7 @@ impl PyApplicationSourceHandle {
         })
     }
 
+    /// Return the unique identifier of the source this handle belongs to.
     fn source_id(&self) -> String {
         self.inner.source_id().to_string()
     }
@@ -180,7 +198,10 @@ fn py_object_to_json(py: Python<'_>, obj: &PyObject) -> PyResult<serde_json::Val
     pythonize::depythonize(bound).map_err(map_err)
 }
 
-/// Wraps `ApplicationSource` for Python.
+/// An in-process source that lets you push graph changes programmatically.
+///
+/// Create with ``ApplicationSource("my-source")`` and use
+/// ``get_handle()`` to obtain a handle for pushing nodes and relations.
 #[pyclass(name = "ApplicationSource")]
 pub struct PyApplicationSource {
     source: Mutex<Option<ApplicationSource>>,
@@ -189,6 +210,11 @@ pub struct PyApplicationSource {
 
 #[pymethods]
 impl PyApplicationSource {
+    /// Create a new ApplicationSource.
+    ///
+    /// Args:
+    ///     id: Unique identifier for this source.
+    ///     properties: Optional dict of initial properties.
     #[new]
     #[pyo3(signature = (id, properties=None))]
     fn new(py: Python<'_>, id: &str, properties: Option<HashMap<String, PyObject>>) -> PyResult<Self> {
@@ -212,12 +238,14 @@ impl PyApplicationSource {
         })
     }
 
+    /// Get a clonable handle for pushing data to this source.
     fn get_handle(&self) -> PyApplicationSourceHandle {
         PyApplicationSourceHandle {
             inner: self.handle.clone(),
         }
     }
 
+    /// Consume the source and return a PyCapsule for use with ``DrasiLibBuilder``.
     fn into_source_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let source = self
             .source

@@ -30,10 +30,10 @@ async def test_stream_receives_data():
     await handle.send_node_insert("e1", ["Person"], props)
 
     result = await asyncio.wait_for(stream.__anext__(), timeout=5.0)
-    assert "query_id" in result
-    assert "results" in result
-    assert "timestamp" in result
-    assert isinstance(result["results"], list)
+    assert hasattr(result, "query_id")
+    assert hasattr(result, "results")
+    assert hasattr(result, "timestamp")
+    assert isinstance(result.results, list)
 
     await lib.stop()
 
@@ -58,7 +58,7 @@ async def test_stream_multiple_results():
 
     assert len(results) == 3
     for r in results:
-        assert r["query_id"] == "test-query"
+        assert r.query_id == "test-query"
 
     await lib.stop()
 

@@ -664,41 +664,41 @@ def start_reaction_workers(gs, s_ghost, s_pellet, s_pacman, s_dots, s_dir):
         if s_ghost is None:
             return
         async for result in s_ghost:
-            for r in result.get("results", []):
-                if r.get("type") == "ADD":
-                    gs.push_event("ghost_catches_pacman", r.get("data", {}))
+            for r in result.results:
+                if r.diff_type == "ADD":
+                    gs.push_event("ghost_catches_pacman", r.data or {})
 
     async def _pellet_worker():
         if s_pellet is None:
             return
         async for result in s_pellet:
-            for r in result.get("results", []):
-                if r.get("type") == "ADD":
-                    gs.push_event("pacman_eats_pellet", r.get("data", {}))
+            for r in result.results:
+                if r.diff_type == "ADD":
+                    gs.push_event("pacman_eats_pellet", r.data or {})
 
     async def _pacman_worker():
         if s_pacman is None:
             return
         async for result in s_pacman:
-            for r in result.get("results", []):
-                if r.get("type") == "ADD":
-                    gs.push_event("pacman_catches_ghost", r.get("data", {}))
+            for r in result.results:
+                if r.diff_type == "ADD":
+                    gs.push_event("pacman_catches_ghost", r.data or {})
 
     async def _dots_worker():
         if s_dots is None:
             return
         async for result in s_dots:
-            for r in result.get("results", []):
-                if r.get("type") == "ADD":
-                    gs.push_event("dot_eaten", r.get("data", {}))
+            for r in result.results:
+                if r.diff_type == "ADD":
+                    gs.push_event("dot_eaten", r.data or {})
 
     async def _dir_worker():
         """Direction changes arrive from the HTTP source webhook."""
         if s_dir is None:
             return
         async for result in s_dir:
-            for r in result.get("results", []):
-                data = r.get("data", {})
+            for r in result.results:
+                data = r.data or {}
                 dx = data.get("dx")
                 dy = data.get("dy")
                 if dx is not None and dy is not None:

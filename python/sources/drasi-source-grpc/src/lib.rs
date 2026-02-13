@@ -5,6 +5,9 @@ use _drasi_core::errors::map_err;
 use drasi_source_grpc::{GrpcSource, GrpcSourceBuilder};
 use pyo3::prelude::*;
 
+/// Builder for configuring and constructing a ``GrpcSource``.
+///
+/// Use ``GrpcSource.builder(id)`` or ``GrpcSourceBuilder(id)`` to create.
 #[pyclass(name = "GrpcSourceBuilder")]
 pub struct PyGrpcSourceBuilder {
     inner: Option<GrpcSourceBuilder>,
@@ -12,6 +15,10 @@ pub struct PyGrpcSourceBuilder {
 
 #[pymethods]
 impl PyGrpcSourceBuilder {
+    /// Create a new GrpcSourceBuilder.
+    ///
+    /// Args:
+    ///     id: Unique identifier for this source.
     #[new]
     fn new(id: &str) -> Self {
         Self {
@@ -19,6 +26,7 @@ impl PyGrpcSourceBuilder {
         }
     }
 
+    /// Set the gRPC server hostname.
     fn with_host(&mut self, host: &str) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -27,6 +35,7 @@ impl PyGrpcSourceBuilder {
         Ok(())
     }
 
+    /// Set the gRPC server port.
     fn with_port(&mut self, port: u16) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -35,6 +44,7 @@ impl PyGrpcSourceBuilder {
         Ok(())
     }
 
+    /// Set the gRPC endpoint path.
     fn with_endpoint(&mut self, endpoint: &str) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -43,6 +53,7 @@ impl PyGrpcSourceBuilder {
         Ok(())
     }
 
+    /// Set the connection timeout in milliseconds.
     fn with_timeout_ms(&mut self, timeout_ms: u64) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -51,6 +62,7 @@ impl PyGrpcSourceBuilder {
         Ok(())
     }
 
+    /// Set whether the source starts automatically when added to a ``DrasiLib``.
     fn with_auto_start(&mut self, auto_start: bool) -> PyResult<()> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -59,6 +71,7 @@ impl PyGrpcSourceBuilder {
         Ok(())
     }
 
+    /// Consume the builder and return a configured ``GrpcSource``.
     fn build(&mut self) -> PyResult<PyGrpcSource> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -70,6 +83,7 @@ impl PyGrpcSourceBuilder {
     }
 }
 
+/// A source that receives graph changes over gRPC.
 #[pyclass(name = "GrpcSource")]
 pub struct PyGrpcSource {
     inner: Mutex<Option<GrpcSource>>,
@@ -77,11 +91,13 @@ pub struct PyGrpcSource {
 
 #[pymethods]
 impl PyGrpcSource {
+    /// Create a new ``GrpcSourceBuilder`` for the given source id.
     #[staticmethod]
     fn builder(id: &str) -> PyGrpcSourceBuilder {
         PyGrpcSourceBuilder::new(id)
     }
 
+    /// Consume the source and return a PyCapsule for use with ``DrasiLibBuilder``.
     fn into_source_wrapper(&self, py: Python<'_>) -> PyResult<PyObject> {
         let source = self
             .inner
