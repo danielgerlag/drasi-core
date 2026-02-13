@@ -63,10 +63,16 @@ transmitted as text strings in WAL, which causes numeric comparisons to fail sil
 ### The Cypher Query
 
 ```cypher
-MATCH (o:orders)
-WHERE o.total_amount > 500
-RETURN o.id AS order_id, o.customer_name AS customer,
-       o.product AS product, o.total_amount AS amount, o.status AS status
+MATCH
+  (o:orders)
+WHERE
+  o.total_amount > 500
+RETURN
+  o.id AS order_id,
+  o.customer_name AS customer,
+  o.product AS product,
+  o.total_amount AS amount,
+  o.status AS status
 ```
 
 Each row in the `orders` table becomes a node labeled `orders`. The query continuously

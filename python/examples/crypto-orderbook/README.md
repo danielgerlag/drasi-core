@@ -87,27 +87,56 @@ All data lives in Drasi's in-memory graph — there is no external database.
 
 ```cypher
 -- Open Bids (via relationship traversal)
-MATCH (b:Bid)-[:FOR]->(a:Asset) WHERE b.status = 'open'
-RETURN b.id AS id, b.price AS price, b.quantity AS quantity,
-       a.id AS asset, b.submitted_at AS submitted_at
+MATCH
+  (b:Bid)-[:FOR]->(a:Asset)
+WHERE
+  b.status = 'open'
+RETURN
+  b.id AS id,
+  b.price AS price,
+  b.quantity AS quantity,
+  a.id AS asset,
+  b.submitted_at AS submitted_at
 
 -- Open Asks (via relationship traversal)
-MATCH (s:Ask)-[:FOR]->(a:Asset) WHERE s.status = 'open'
-RETURN s.id AS id, s.price AS price, s.quantity AS quantity,
-       a.id AS asset, s.submitted_at AS submitted_at
+MATCH
+  (s:Ask)-[:FOR]->(a:Asset)
+WHERE
+  s.status = 'open'
+RETURN
+  s.id AS id,
+  s.price AS price,
+  s.quantity AS quantity,
+  a.id AS asset,
+  s.submitted_at AS submitted_at
 
 -- Matched Orders (cross-node relationship query — the matching engine)
-MATCH (b:Bid)-[:FOR]->(a:Asset)<-[:FOR]-(s:Ask)
-WHERE b.status = 'open' AND s.status = 'open' AND b.price >= s.price
-RETURN b.id AS bid_id, b.price AS bid_price, b.quantity AS bid_qty,
-       s.id AS ask_id, s.price AS ask_price, s.quantity AS ask_qty,
-       a.id AS asset
+MATCH
+  (b:Bid)-[:FOR]->(a:Asset)<-[:FOR]-(s:Ask)
+WHERE
+  b.status = 'open'
+  AND s.status = 'open'
+  AND b.price >= s.price
+RETURN
+  b.id AS bid_id,
+  b.price AS bid_price,
+  b.quantity AS bid_qty,
+  s.id AS ask_id,
+  s.price AS ask_price,
+  s.quantity AS ask_qty,
+  a.id AS asset
 
 -- All Trades
-MATCH (t:Trade)
-RETURN t.id AS id, t.price AS price, t.quantity AS quantity,
-       t.asset AS asset, t.bid_id AS bid_id, t.ask_id AS ask_id,
-       t.executed_at AS executed_at
+MATCH
+  (t:Trade)
+RETURN
+  t.id AS id,
+  t.price AS price,
+  t.quantity AS quantity,
+  t.asset AS asset,
+  t.bid_id AS bid_id,
+  t.ask_id AS ask_id,
+  t.executed_at AS executed_at
 ```
 
 ### Matching Engine
