@@ -32,13 +32,14 @@
 const CELL = 24;
 const GHOST_COLORS = {blinky:'#f00', pinky:'#ffb8ff', inky:'#0ff', clyde:'#ffb851'};
 
-let maze, COLS, ROWS, ssePort;
+let maze, COLS, ROWS, ssePort, inputPort;
 let state = null;
 
 // Fetch config, then connect both SSE streams
 fetch('/config').then(r=>r.json()).then(cfg => {
   maze = cfg.maze; COLS = cfg.cols; ROWS = cfg.rows;
   ssePort = cfg.sse_port;
+  inputPort = cfg.input_port;
   const canvas = document.getElementById('c');
   canvas.width = COLS * CELL;
   canvas.height = ROWS * CELL;
@@ -209,7 +210,9 @@ document.addEventListener('keydown', e => {
   const dir = map[e.key];
   if (dir) {
     e.preventDefault();
-    fetch('/input', {method:'POST', headers:{'Content-Type':'application/json'},
+    const host = location.hostname || 'localhost';
+    fetch(`http://${host}:${inputPort}/input`, {method:'POST',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({dir})});
   }
   if (e.key === ' ' || e.key === 'Enter') {

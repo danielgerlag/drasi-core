@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use _drasi_core::builder::source_to_capsule;
 use _drasi_core::errors::map_err;
-use drasi_source_http::{HttpSource, HttpSourceBuilder};
+use drasi_source_http::{HttpSource, HttpSourceBuilder, HttpSourceConfig};
 use pyo3::prelude::*;
 
 #[pyclass]
@@ -56,6 +56,20 @@ impl PyHttpSourceBuilder {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
         })?;
         self.inner = Some(builder.with_auto_start(auto_start));
+        Ok(())
+    }
+
+    /// Configure the source from a JSON string matching HttpSourceConfig.
+    /// This supports the full configuration including webhook mode.
+    fn with_config_json(&mut self, json_str: &str) -> PyResult<()> {
+        let builder = self.inner.take().ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
+        })?;
+        let config: HttpSourceConfig =
+            serde_json::from_str(json_str).map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("Invalid config JSON: {e}"))
+            })?;
+        self.inner = Some(builder.with_config(config));
         Ok(())
     }
 

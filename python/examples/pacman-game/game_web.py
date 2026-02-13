@@ -19,10 +19,11 @@ import random
 import threading
 import time
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 
 from drasi_lib import DrasiLibBuilder, Query
 from drasi_source_application import PyApplicationSource, PyPropertyMapBuilder
+from drasi_source_http import PyHttpSource
 from drasi_reaction_sse import PySseReaction
 
 # ---------------------------------------------------------------------------
@@ -32,6 +33,7 @@ from drasi_reaction_sse import PySseReaction
 COLS, ROWS = 21, 21
 FPS = 4
 SSE_PORT = 8082
+INPUT_PORT = 8083
 FLASK_PORT = 5050
 
 MAZE = [
@@ -389,14 +391,90 @@ def move_ghost(gs, name):
 
 
 # ---------------------------------------------------------------------------
-# Drasi wiring (SSE reaction instead of ApplicationReaction)
+# Drasi wiring
 # ---------------------------------------------------------------------------
 
-def build_drasi():
-    source = PyApplicationSource("game")
-    handle = source.get_handle()
+from drasi_reaction_application import PyApplicationReaction
 
-    # SSE reaction that serves all 4 queries on one endpoint
+# Webhook config for the HTTP source: the browser POSTs {dir: "up/down/left/right"}
+# to /input and the webhook maps it to an insert of a Direction node with dx/dy.
+# Using "insert" rather than "update" so that the first keypress creates the node;
+# subsequent inserts act as upserts since drasi-core replaces existing nodes.
+INPUT_WEBHOOK_CONFIG = json.dumps({
+    "host": "0.0.0.0",
+    "port": INPUT_PORT,
+    "webhooks": {
+        "error_behavior": "accept_and_log",
+        "cors": {"enabled": True, "allow_origins": ["*"]},
+        "routes": [
+            {
+                "path": "/input",
+                "methods": ["POST"],
+                "mappings": [
+                    {
+                        "when": {"field": "payload.dir", "equals": "up"},
+                        "operation": "insert",
+                        "element_type": "node",
+                        "template": {
+                            "id": "direction",
+                            "labels": ["Direction"],
+                            "properties": {"dx": 0, "dy": -1},
+                        },
+                    },
+                    {
+                        "when": {"field": "payload.dir", "equals": "down"},
+                        "operation": "insert",
+                        "element_type": "node",
+                        "template": {
+                            "id": "direction",
+                            "labels": ["Direction"],
+                            "properties": {"dx": 0, "dy": 1},
+                        },
+                    },
+                    {
+                        "when": {"field": "payload.dir", "equals": "left"},
+                        "operation": "insert",
+                        "element_type": "node",
+                        "template": {
+                            "id": "direction",
+                            "labels": ["Direction"],
+                            "properties": {"dx": -1, "dy": 0},
+                        },
+                    },
+                    {
+                        "when": {"field": "payload.dir", "equals": "right"},
+                        "operation": "insert",
+                        "element_type": "node",
+                        "template": {
+                            "id": "direction",
+                            "labels": ["Direction"],
+                            "properties": {"dx": 1, "dy": 0},
+                        },
+                    },
+                ],
+            },
+        ],
+    },
+})
+
+
+def build_drasi_full():
+    """Build Drasi with:
+      - ApplicationSource for game state (ghosts, pacman, cells, dots, pellets)
+      - HttpSource (webhook) for player input (direction changes)
+      - SSE Reaction → browser (collision/pellet events)
+      - ApplicationReactions → server-side game logic
+    """
+    # --- Sources ---
+    game_source = PyApplicationSource("game")
+    handle = game_source.get_handle()
+
+    input_builder = PyHttpSource.builder("input")
+    input_builder.with_config_json(INPUT_WEBHOOK_CONFIG)
+    input_builder.with_auto_start(True)
+    input_source = input_builder.build()
+
+    # --- SSE reaction → browser ---
     sse_builder = PySseReaction.builder("game-sse")
     sse_builder.with_port(SSE_PORT)
     sse_builder.with_sse_path("/events")
@@ -409,14 +487,29 @@ def build_drasi():
     sse_builder.with_auto_start(True)
     sse_reaction = sse_builder.build()
 
-    def cypher(qid, text):
+    # --- ApplicationReactions → server-side game logic ---
+    def make_rx(name, queries):
+        b = PyApplicationReaction.builder(name)
+        for q in queries:
+            b.with_query(q)
+        b.with_auto_start(True)
+        return b.build()
+
+    ghost_catch_rx, ghost_catch_h = make_rx("ghost-catch-rx", ["ghost-catches-pacman"])
+    pellet_rx, pellet_h = make_rx("pellet-rx", ["pacman-eats-pellet"])
+    pacman_catch_rx, pacman_catch_h = make_rx("pacman-catch-rx", ["pacman-catches-ghost"])
+    dots_rx, dots_h = make_rx("dots-rx", ["dots-eaten"])
+    dir_rx, dir_h = make_rx("dir-rx", ["direction-changed"])
+
+    # --- Queries on game source ---
+    def game_cypher(qid, text):
         q = Query.cypher(qid)
         q.query(text)
         q.from_source("game")
         q.auto_start(True)
         return q.build()
 
-    q_ghost_catch = cypher(
+    q_ghost_catch = game_cypher(
         "ghost-catches-pacman",
         """
             MATCH (g:Ghost)-[:IS_AT]->(c:Cell)<-[:IS_AT]-(p:Pacman)
@@ -427,7 +520,7 @@ def build_drasi():
                    c.y  AS y
         """,
     )
-    q_pellet = cypher(
+    q_pellet = game_cypher(
         "pacman-eats-pellet",
         """
             MATCH (p:Pacman)-[:IS_AT]->(c:Cell)<-[:ON]-(pel:Pellet)
@@ -436,7 +529,7 @@ def build_drasi():
                    c.y    AS y
         """,
     )
-    q_pacman_catch = cypher(
+    q_pacman_catch = game_cypher(
         "pacman-catches-ghost",
         """
             MATCH (g:Ghost)-[:IS_AT]->(c:Cell)<-[:IS_AT]-(p:Pacman)
@@ -447,7 +540,7 @@ def build_drasi():
                    c.y  AS y
         """,
     )
-    q_dots = cypher(
+    q_dots = game_cypher(
         "dots-eaten",
         """
             MATCH (d:Dot)
@@ -456,25 +549,40 @@ def build_drasi():
         """,
     )
 
+    # --- Query on input source ---
+    q_dir = Query.cypher("direction-changed")
+    q_dir.query("""
+        MATCH (d:Direction)
+        RETURN d.dx AS dx,
+               d.dy AS dy
+    """)
+    q_dir.from_source("input")
+    q_dir.auto_start(True)
+    q_dir_cfg = q_dir.build()
+
+    # --- Assemble ---
     builder = DrasiLibBuilder()
     builder.with_id("pacman")
-    builder.with_source(source.into_source_wrapper())
-    for qcfg in [q_ghost_catch, q_pellet, q_pacman_catch, q_dots]:
+    builder.with_source(game_source.into_source_wrapper())
+    builder.with_source(input_source.into_source_wrapper())
+    for qcfg in [q_ghost_catch, q_pellet, q_pacman_catch, q_dots, q_dir_cfg]:
         builder.with_query(qcfg)
     builder.with_reaction(sse_reaction.into_reaction_wrapper())
+    for r in [ghost_catch_rx, pellet_rx, pacman_catch_rx, dots_rx, dir_rx]:
+        builder.with_reaction(r.into_reaction_wrapper())
 
     async def _init():
         lib = await builder.build()
         await lib.start()
-        return lib
+        s1 = await ghost_catch_h.as_stream()
+        s2 = await pellet_h.as_stream()
+        s3 = await pacman_catch_h.as_stream()
+        s4 = await dots_h.as_stream()
+        s5 = await dir_h.as_stream()
+        return lib, s1, s2, s3, s4, s5
 
-    lib = run_async(_init())
-    return lib, handle
-
-
-# ---------------------------------------------------------------------------
-# Game tick loop (runs in background thread)
-# ---------------------------------------------------------------------------
+    lib, s_ghost, s_pellet, s_pacman, s_dots, s_dir = run_async(_init())
+    return lib, handle, s_ghost, s_pellet, s_pacman, s_dots, s_dir
 
 def game_tick(gs: GameState):
     """Advance one game tick: move pacman, move ghosts, send state."""
@@ -562,118 +670,8 @@ def start_tick_loop(gs: GameState):
     t.start()
 
 
-# ---------------------------------------------------------------------------
-# We still need server-side event processing.  The SSE reaction delivers
-# events to the *browser*, but game-state mutations (lives, score, power)
-# happen server-side.  We use an ApplicationReaction alongside the SSE
-# reaction for that.
-# ---------------------------------------------------------------------------
-
-from drasi_reaction_application import PyApplicationReaction
-
-
-def build_drasi_full():
-    """Build Drasi with both SSE reaction (for browser) and
-    ApplicationReaction (for server-side game logic)."""
-    source = PyApplicationSource("game")
-    handle = source.get_handle()
-
-    # SSE reaction → browser
-    sse_builder = PySseReaction.builder("game-sse")
-    sse_builder.with_port(SSE_PORT)
-    sse_builder.with_sse_path("/events")
-    sse_builder.with_queries([
-        "ghost-catches-pacman",
-        "pacman-eats-pellet",
-        "pacman-catches-ghost",
-        "dots-eaten",
-    ])
-    sse_builder.with_auto_start(True)
-    sse_reaction = sse_builder.build()
-
-    # ApplicationReaction → server-side game logic
-    def make_rx(name, queries):
-        b = PyApplicationReaction.builder(name)
-        for q in queries:
-            b.with_query(q)
-        b.with_auto_start(True)
-        return b.build()
-
-    ghost_catch_rx, ghost_catch_h = make_rx("ghost-catch-rx", ["ghost-catches-pacman"])
-    pellet_rx, pellet_h = make_rx("pellet-rx", ["pacman-eats-pellet"])
-    pacman_catch_rx, pacman_catch_h = make_rx("pacman-catch-rx", ["pacman-catches-ghost"])
-    dots_rx, dots_h = make_rx("dots-rx", ["dots-eaten"])
-
-    def cypher(qid, text):
-        q = Query.cypher(qid)
-        q.query(text)
-        q.from_source("game")
-        q.auto_start(True)
-        return q.build()
-
-    q_ghost_catch = cypher(
-        "ghost-catches-pacman",
-        """
-            MATCH (g:Ghost)-[:IS_AT]->(c:Cell)<-[:IS_AT]-(p:Pacman)
-            WHERE p.powered = 'false'
-              AND g.alive = 'true'
-            RETURN g.id AS ghost_id,
-                   c.x  AS x,
-                   c.y  AS y
-        """,
-    )
-    q_pellet = cypher(
-        "pacman-eats-pellet",
-        """
-            MATCH (p:Pacman)-[:IS_AT]->(c:Cell)<-[:ON]-(pel:Pellet)
-            RETURN pel.id AS pellet_id,
-                   c.x    AS x,
-                   c.y    AS y
-        """,
-    )
-    q_pacman_catch = cypher(
-        "pacman-catches-ghost",
-        """
-            MATCH (g:Ghost)-[:IS_AT]->(c:Cell)<-[:IS_AT]-(p:Pacman)
-            WHERE p.powered = 'true'
-              AND g.alive = 'true'
-            RETURN g.id AS ghost_id,
-                   c.x  AS x,
-                   c.y  AS y
-        """,
-    )
-    q_dots = cypher(
-        "dots-eaten",
-        """
-            MATCH (d:Dot)
-            WHERE d.eaten = 'true'
-            RETURN d.id AS dot_id
-        """,
-    )
-
-    builder = DrasiLibBuilder()
-    builder.with_id("pacman")
-    builder.with_source(source.into_source_wrapper())
-    for qcfg in [q_ghost_catch, q_pellet, q_pacman_catch, q_dots]:
-        builder.with_query(qcfg)
-    builder.with_reaction(sse_reaction.into_reaction_wrapper())
-    for r in [ghost_catch_rx, pellet_rx, pacman_catch_rx, dots_rx]:
-        builder.with_reaction(r.into_reaction_wrapper())
-
-    async def _init():
-        lib = await builder.build()
-        await lib.start()
-        s1 = await ghost_catch_h.as_stream()
-        s2 = await pellet_h.as_stream()
-        s3 = await pacman_catch_h.as_stream()
-        s4 = await dots_h.as_stream()
-        return lib, s1, s2, s3, s4
-
-    lib, s_ghost, s_pellet, s_pacman, s_dots = run_async(_init())
-    return lib, handle, s_ghost, s_pellet, s_pacman, s_dots
-
-
-def start_reaction_workers(gs, s_ghost, s_pellet, s_pacman, s_dots):
+def start_reaction_workers(gs, s_ghost, s_pellet, s_pacman, s_dots, s_dir):
+    """Consume ApplicationReaction streams and mutate game state."""
     async def _ghost_worker():
         if s_ghost is None:
             return
@@ -706,10 +704,24 @@ def start_reaction_workers(gs, s_ghost, s_pellet, s_pacman, s_dots):
                 if r.get("type") == "ADD":
                     gs.push_event("dot_eaten", r.get("data", {}))
 
+    async def _dir_worker():
+        """Direction changes arrive from the HTTP source webhook."""
+        if s_dir is None:
+            return
+        async for result in s_dir:
+            for r in result.get("results", []):
+                data = r.get("data", {})
+                dx = data.get("dx")
+                dy = data.get("dy")
+                if dx is not None and dy is not None:
+                    with gs.lock:
+                        gs.next_dir = (int(dx), int(dy))
+
     fire_and_forget(_ghost_worker())
     fire_and_forget(_pellet_worker())
     fire_and_forget(_pacman_worker())
     fire_and_forget(_dots_worker())
+    fire_and_forget(_dir_worker())
 
 
 # ---------------------------------------------------------------------------
@@ -778,22 +790,6 @@ def stream():
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
-@app.route("/input", methods=["POST"])
-def player_input():
-    data = request.get_json(silent=True) or {}
-    direction = data.get("dir")
-    dirs = {
-        "up":    (0, -1),
-        "down":  (0,  1),
-        "left":  (-1, 0),
-        "right": (1,  0),
-    }
-    if direction in dirs:
-        with gs.lock:
-            gs.next_dir = dirs[direction]
-    return jsonify(ok=True)
-
-
 @app.route("/restart", methods=["POST"])
 def restart():
     global gs
@@ -806,7 +802,10 @@ def restart():
 
 @app.route("/config")
 def config():
-    return jsonify(maze=MAZE, cols=COLS, rows=ROWS, sse_port=SSE_PORT, fps=FPS)
+    return jsonify(
+        maze=MAZE, cols=COLS, rows=ROWS,
+        sse_port=SSE_PORT, input_port=INPUT_PORT, fps=FPS,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -814,12 +813,12 @@ def config():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    print(f"Initializing Drasi engine...")
-    lib, handle, s_ghost, s_pellet, s_pacman, s_dots = build_drasi_full()
+    print("Initializing Drasi engine...")
+    lib, handle, s_ghost, s_pellet, s_pacman, s_dots, s_dir = build_drasi_full()
 
     gs = GameState(handle)
     init_drasi_state(gs)
-    start_reaction_workers(gs, s_ghost, s_pellet, s_pacman, s_dots)
+    start_reaction_workers(gs, s_ghost, s_pellet, s_pacman, s_dots, s_dir)
     start_tick_loop(gs)
 
     print(f"SSE endpoint: http://localhost:{SSE_PORT}/events")
