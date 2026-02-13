@@ -22,7 +22,8 @@ CRATES := \
 	bootstrappers/drasi-bootstrap-application \
 	bootstrappers/drasi-bootstrap-noop \
 	indexes/drasi-index-rocksdb \
-	state-stores/drasi-state-store-redb
+	state-stores/drasi-state-store-redb \
+	middleware/drasi-middleware
 
 .PHONY: help build-all lint-all test-all integration-test-all publish-all clean-all
 

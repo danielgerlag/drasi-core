@@ -5,6 +5,7 @@ use _drasi_core::builder::{
     state_store_from_capsule,
 };
 use _drasi_core::errors::map_err;
+use _drasi_middleware::PySourceMiddlewareConfig;
 
 /// Fluent builder for Query configurations
 #[pyclass]
@@ -63,6 +64,28 @@ impl Query {
             pyo3::exceptions::PyRuntimeError::new_err("Query builder already consumed")
         })?;
         self.inner = Some(inner.enable_bootstrap(enable));
+        Ok(())
+    }
+
+    /// Add middleware to the query
+    fn with_middleware(&mut self, middleware: PySourceMiddlewareConfig) -> PyResult<()> {
+        let inner = self.inner.take().ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err("Query builder already consumed")
+        })?;
+        self.inner = Some(inner.with_middleware(middleware.inner));
+        Ok(())
+    }
+
+    /// Subscribe to a source with a middleware pipeline
+    fn from_source_with_pipeline(
+        &mut self,
+        source_id: &str,
+        pipeline: Vec<String>,
+    ) -> PyResult<()> {
+        let inner = self.inner.take().ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err("Query builder already consumed")
+        })?;
+        self.inner = Some(inner.from_source_with_pipeline(source_id, pipeline));
         Ok(())
     }
 

@@ -9,9 +9,26 @@ publish = false
 name = "_drasi_lib"
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = []
+
+# Middleware features (passed through to drasi-lib)
+middleware-jq = ["drasi-lib/middleware-jq"]
+middleware-decoder = ["drasi-lib/middleware-decoder"]
+middleware-map = ["drasi-lib/middleware-map"]
+middleware-parse-json = ["drasi-lib/middleware-parse-json"]
+middleware-promote = ["drasi-lib/middleware-promote"]
+middleware-relabel = ["drasi-lib/middleware-relabel"]
+middleware-unwind = ["drasi-lib/middleware-unwind"]
+
+# Convenience feature to enable all middleware
+middleware-all = ["drasi-lib/middleware-all"]
+
 [dependencies]
 drasi-lib = { path = "../../lib" }
+drasi-core = { path = "../../core" }
 drasi-core-python = { path = "../drasi-core" }
+drasi-middleware-python = { path = "../middleware/drasi-middleware" }
 pyo3 = { version = "0.22", features = ["extension-module"] }
 pyo3-async-runtimes = { version = "0.22", features = ["attributes", "tokio-runtime"] }
 tokio = { version = "1.0", features = ["rt-multi-thread"] }
