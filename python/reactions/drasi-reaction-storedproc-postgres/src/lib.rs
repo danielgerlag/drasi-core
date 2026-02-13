@@ -6,7 +6,7 @@ use drasi_reaction_storedproc_postgres::reaction::PostgresStoredProcReactionBuil
 use drasi_reaction_storedproc_postgres::PostgresStoredProcReaction;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "PostgresStoredProcReactionBuilder")]
 pub struct PyPostgresStoredProcReactionBuilder {
     inner: Option<PostgresStoredProcReactionBuilder>,
 }
@@ -129,7 +129,7 @@ impl PyPostgresStoredProcReactionBuilder {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "PostgresStoredProcReaction")]
 pub struct PyPostgresStoredProcReaction {
     inner: Mutex<Option<PostgresStoredProcReaction>>,
 }

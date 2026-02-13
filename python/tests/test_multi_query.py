@@ -3,15 +3,15 @@
 import asyncio
 
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_reaction_application import PyApplicationReaction
-from drasi_source_application import PyApplicationSource
+from drasi_reaction_application import ApplicationReaction
+from drasi_source_application import ApplicationSource
 
 from .conftest import make_person_props
 
 
 async def test_two_queries_independent_results():
     """Two queries from the same source each produce their own results to separate reactions."""
-    source = PyApplicationSource("shared-source")
+    source = ApplicationSource("shared-source")
     handle = source.get_handle()
 
     # Query 1: returns name
@@ -27,12 +27,12 @@ async def test_two_queries_independent_results():
     q2.auto_start(True)
 
     # Reaction for query 1
-    r1_builder = PyApplicationReaction.builder("reaction-name")
+    r1_builder = ApplicationReaction.builder("reaction-name")
     r1_builder.with_query("query-name")
     reaction1, reaction_handle1 = r1_builder.build()
 
     # Reaction for query 2
-    r2_builder = PyApplicationReaction.builder("reaction-age")
+    r2_builder = ApplicationReaction.builder("reaction-age")
     r2_builder.with_query("query-age")
     reaction2, reaction_handle2 = r2_builder.build()
 
@@ -67,7 +67,7 @@ async def test_two_queries_independent_results():
 
 async def test_reaction_subscribes_to_multiple_queries():
     """A single reaction can subscribe to multiple queries."""
-    source = PyApplicationSource("shared-source-2")
+    source = ApplicationSource("shared-source-2")
     handle = source.get_handle()
 
     q1 = Query.cypher("q-alpha")
@@ -80,7 +80,7 @@ async def test_reaction_subscribes_to_multiple_queries():
     q2.from_source("shared-source-2")
     q2.auto_start(True)
 
-    r_builder = PyApplicationReaction.builder("multi-sub-reaction")
+    r_builder = ApplicationReaction.builder("multi-sub-reaction")
     r_builder.with_queries(["q-alpha", "q-beta"])
     reaction, reaction_handle = r_builder.build()
 

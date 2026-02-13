@@ -6,7 +6,7 @@ use drasi_reaction_storedproc_mysql::reaction::MySqlStoredProcReactionBuilder;
 use drasi_reaction_storedproc_mysql::MySqlStoredProcReaction;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "MySqlStoredProcReactionBuilder")]
 pub struct PyMySqlStoredProcReactionBuilder {
     inner: Option<MySqlStoredProcReactionBuilder>,
 }
@@ -129,7 +129,7 @@ impl PyMySqlStoredProcReactionBuilder {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "MySqlStoredProcReaction")]
 pub struct PyMySqlStoredProcReaction {
     inner: Mutex<Option<MySqlStoredProcReaction>>,
 }

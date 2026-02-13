@@ -16,9 +16,9 @@ import os
 import tempfile
 
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_source_application import PyApplicationSource, PyPropertyMapBuilder
-from drasi_reaction_application import PyApplicationReaction
-from drasi_bootstrap_scriptfile import PyScriptFileBootstrapProvider
+from drasi_source_application import ApplicationSource, PropertyMapBuilder
+from drasi_reaction_application import ApplicationReaction
+from drasi_bootstrap_scriptfile import ScriptFileBootstrapProvider
 
 
 def create_bootstrap_file(path: str):
@@ -86,17 +86,17 @@ async def main():
     try:
         # Step 2: Create the ScriptFileBootstrapProvider
         print("Step 2: Creating ScriptFileBootstrapProvider...")
-        bootstrap_builder = PyScriptFileBootstrapProvider.builder()
+        bootstrap_builder = ScriptFileBootstrapProvider.builder()
         bootstrap_builder.with_file(bootstrap_path)
         bootstrap_provider = bootstrap_builder.build()
         print("  ✓ Bootstrap provider configured\n")
 
         # Step 3: Create source and reaction
         print("Step 3: Creating source and reaction...")
-        source = PyApplicationSource("people-source")
+        source = ApplicationSource("people-source")
         handle = source.get_handle()
 
-        reaction_builder = PyApplicationReaction.builder("people-reaction")
+        reaction_builder = ApplicationReaction.builder("people-reaction")
         reaction_builder.with_query("engineers-query")
         reaction_builder.with_auto_start(True)
         reaction, reaction_handle = reaction_builder.build()
@@ -139,7 +139,7 @@ async def main():
 
         # Step 6: Push an additional engineer
         print("\nStep 6: Adding a new engineer (Frank, age 31)...")
-        props = PyPropertyMapBuilder()
+        props = PropertyMapBuilder()
         props.with_string("name", "Frank")
         props.with_integer("age", 31)
         props.with_string("department", "Engineering")
@@ -160,7 +160,7 @@ async def main():
 
         # Step 7: Push a non-engineer (should not appear in results)
         print("\nStep 7: Adding a non-engineer (Grace, Sales)...")
-        props2 = PyPropertyMapBuilder()
+        props2 = PropertyMapBuilder()
         props2.with_string("name", "Grace")
         props2.with_integer("age", 29)
         props2.with_string("department", "Sales")

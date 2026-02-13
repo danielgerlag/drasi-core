@@ -5,7 +5,7 @@ use _drasi_core::errors::map_err;
 use drasi_reaction_http_adaptive::{AdaptiveHttpReaction, HttpAdaptiveReactionBuilder};
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "HttpReactionBuilder")]
 pub struct PyHttpReactionBuilder {
     inner: Option<HttpAdaptiveReactionBuilder>,
 }
@@ -75,6 +75,21 @@ impl PyHttpReactionBuilder {
         Ok(())
     }
 
+    /// Add a query-specific route configuration from a JSON string.
+    /// The JSON should match QueryConfig: {"added": {...}, "updated": {...}, "deleted": {...}}
+    /// where each value is a CallSpec: {"url": "...", "method": "...", "body": "...", "headers": {...}}
+    fn with_route_json(&mut self, query_id: &str, config_json: &str) -> PyResult<()> {
+        let inner = self.inner.take().ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
+        })?;
+        let config: drasi_reaction_http::config::QueryConfig =
+            serde_json::from_str(config_json).map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("Invalid route config JSON: {e}"))
+            })?;
+        self.inner = Some(inner.with_route(query_id, config));
+        Ok(())
+    }
+
     fn build(&mut self) -> PyResult<PyHttpReaction> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -86,7 +101,7 @@ impl PyHttpReactionBuilder {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "HttpReaction")]
 pub struct PyHttpReaction {
     inner: Mutex<Option<AdaptiveHttpReaction>>,
 }

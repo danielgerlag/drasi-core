@@ -13,17 +13,17 @@ No external infrastructure required — uses ApplicationSource to push data.
 import asyncio
 
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_source_application import PyApplicationSource, PyPropertyMapBuilder
-from drasi_reaction_log import PyLogReaction
+from drasi_source_application import ApplicationSource, PropertyMapBuilder
+from drasi_reaction_log import LogReaction
 
 
 async def main():
     # Step 1: Create an ApplicationSource to push data programmatically
-    source = PyApplicationSource("tasks-source")
+    source = ApplicationSource("tasks-source")
     handle = source.get_handle()
 
     # Step 2: Build the LogReaction with Handlebars templates
-    log_builder = PyLogReaction.builder("task-logger")
+    log_builder = LogReaction.builder("task-logger")
 
     # Subscribe to both queries
     log_builder.with_queries(["all-tasks", "critical-tasks"])
@@ -84,7 +84,7 @@ async def main():
         ("task-3", "Deploy v2.0", "Charlie", "critical"),
     ]
     for tid, title, assignee, priority in tasks:
-        props = PyPropertyMapBuilder()
+        props = PropertyMapBuilder()
         props.with_string("title", title)
         props.with_string("assignee", assignee)
         props.with_string("priority", priority)
@@ -93,7 +93,7 @@ async def main():
     await asyncio.sleep(0.5)
 
     # Step 5: Update a task to critical (triggers "updated" templates)
-    props = PyPropertyMapBuilder()
+    props = PropertyMapBuilder()
     props.with_string("title", "Fix login bug")
     props.with_string("assignee", "Alice")
     props.with_string("priority", "critical")

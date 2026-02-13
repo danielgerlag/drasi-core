@@ -5,7 +5,7 @@ use _drasi_core::errors::map_err;
 use drasi_reaction_grpc_adaptive::{AdaptiveGrpcReaction, GrpcAdaptiveReactionBuilder};
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "GrpcReactionBuilder")]
 pub struct PyGrpcReactionBuilder {
     inner: Option<GrpcAdaptiveReactionBuilder>,
 }
@@ -75,6 +75,38 @@ impl PyGrpcReactionBuilder {
         Ok(())
     }
 
+    fn with_batch_size(&mut self, batch_size: usize) -> PyResult<()> {
+        let inner = self.inner.take().ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
+        })?;
+        self.inner = Some(inner.with_max_batch_size(batch_size));
+        Ok(())
+    }
+
+    fn with_min_batch_size(&mut self, size: usize) -> PyResult<()> {
+        let inner = self.inner.take().ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
+        })?;
+        self.inner = Some(inner.with_min_batch_size(size));
+        Ok(())
+    }
+
+    fn with_max_batch_size(&mut self, size: usize) -> PyResult<()> {
+        let inner = self.inner.take().ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
+        })?;
+        self.inner = Some(inner.with_max_batch_size(size));
+        Ok(())
+    }
+
+    fn with_metadata(&mut self, key: &str, value: &str) -> PyResult<()> {
+        let inner = self.inner.take().ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
+        })?;
+        self.inner = Some(inner.with_metadata(key, value));
+        Ok(())
+    }
+
     fn build(&mut self) -> PyResult<PyGrpcReaction> {
         let inner = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -86,7 +118,7 @@ impl PyGrpcReactionBuilder {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "GrpcReaction")]
 pub struct PyGrpcReaction {
     inner: Mutex<Option<AdaptiveGrpcReaction>>,
 }

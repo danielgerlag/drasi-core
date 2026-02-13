@@ -3,18 +3,18 @@
 import asyncio
 
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_reaction_log import PyLogReaction
-from drasi_source_application import PyApplicationSource
+from drasi_reaction_log import LogReaction
+from drasi_source_application import ApplicationSource
 
 from .conftest import make_person_props
 
 
 async def test_log_reaction_basic():
     """LogReaction with default template runs without errors."""
-    source = PyApplicationSource("log-source")
+    source = ApplicationSource("log-source")
     handle = source.get_handle()
 
-    log_builder = PyLogReaction.builder("log-reaction")
+    log_builder = LogReaction.builder("log-reaction")
     log_builder.with_query("log-query")
     log_reaction = log_builder.build()
 
@@ -43,10 +43,10 @@ async def test_log_reaction_basic():
 
 async def test_log_reaction_with_template():
     """LogReaction with Handlebars template processes data without crashing."""
-    source = PyApplicationSource("log-source-2")
+    source = ApplicationSource("log-source-2")
     handle = source.get_handle()
 
-    log_builder = PyLogReaction.builder("log-reaction-2")
+    log_builder = LogReaction.builder("log-reaction-2")
     log_builder.with_query("log-query-2")
     log_builder.with_default_template(
         added="Added: {{data}}",
@@ -80,10 +80,10 @@ async def test_log_reaction_with_template():
 
 async def test_log_reaction_with_route():
     """LogReaction with a per-query route template."""
-    source = PyApplicationSource("log-source-3")
+    source = ApplicationSource("log-source-3")
     handle = source.get_handle()
 
-    log_builder = PyLogReaction.builder("log-reaction-3")
+    log_builder = LogReaction.builder("log-reaction-3")
     log_builder.with_query("log-query-3")
     log_builder.with_route(
         "log-query-3",

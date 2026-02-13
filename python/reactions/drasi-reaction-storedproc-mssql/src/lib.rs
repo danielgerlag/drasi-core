@@ -6,7 +6,7 @@ use drasi_reaction_storedproc_mssql::reaction::MsSqlStoredProcReactionBuilder;
 use drasi_reaction_storedproc_mssql::MsSqlStoredProcReaction;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "MsSqlStoredProcReactionBuilder")]
 pub struct PyMsSqlStoredProcReactionBuilder {
     inner: Option<MsSqlStoredProcReactionBuilder>,
 }
@@ -129,7 +129,7 @@ impl PyMsSqlStoredProcReactionBuilder {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "MsSqlStoredProcReaction")]
 pub struct PyMsSqlStoredProcReaction {
     inner: Mutex<Option<MsSqlStoredProcReaction>>,
 }

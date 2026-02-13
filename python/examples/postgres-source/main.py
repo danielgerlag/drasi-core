@@ -14,13 +14,13 @@ Usage:
 import asyncio
 
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_source_postgres import PyPostgresSource
-from drasi_reaction_application import PyApplicationReaction
+from drasi_source_postgres import PostgresSource
+from drasi_reaction_application import ApplicationReaction
 
 
 async def main():
     # Configure the PostgreSQL source pointing at our Docker instance
-    pg_builder = PyPostgresSource.builder("orders-source")
+    pg_builder = PostgresSource.builder("orders-source")
     pg_builder.with_host("localhost")
     pg_builder.with_port(5432)
     pg_builder.with_database("drasi_example")
@@ -33,7 +33,7 @@ async def main():
     pg_source = pg_builder.build()
 
     # Create an ApplicationReaction to receive query results
-    reaction_builder = PyApplicationReaction.builder("order-alerts")
+    reaction_builder = ApplicationReaction.builder("order-alerts")
     reaction_builder.with_query("high-value-orders")
     reaction_builder.with_auto_start(True)
     reaction, reaction_handle = reaction_builder.build()

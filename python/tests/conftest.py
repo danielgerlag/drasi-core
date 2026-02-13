@@ -7,16 +7,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_reaction_application import PyApplicationReaction, PyApplicationReactionHandle
+from drasi_reaction_application import ApplicationReaction, ApplicationReactionHandle
 from drasi_source_application import (
-    PyApplicationSource,
-    PyApplicationSourceHandle,
-    PyPropertyMapBuilder,
+    ApplicationSource,
+    ApplicationSourceHandle,
+    PropertyMapBuilder,
 )
 
 if TYPE_CHECKING:
-    from drasi_lib import PyDrasiLib
-    from drasi_source_application import PyPropertyMap
+    from drasi_lib import DrasiLib
+    from drasi_source_application import PropertyMap
 
 
 @pytest.fixture
@@ -35,18 +35,18 @@ async def build_simple_lib(
     cypher: str = "MATCH (n:Person) RETURN n.name",
     auto_start_query: bool = True,
 ) -> tuple[
-    "PyDrasiLib",
-    PyApplicationSourceHandle,
-    PyApplicationReactionHandle,
+    "DrasiLib",
+    ApplicationSourceHandle,
+    ApplicationReactionHandle,
 ]:
     """Build a DrasiLib with a single ApplicationSource, Cypher query, and ApplicationReaction.
 
     Returns (lib, source_handle, reaction_handle).
     """
-    source = PyApplicationSource(source_id)
+    source = ApplicationSource(source_id)
     source_handle = source.get_handle()
 
-    reaction_builder = PyApplicationReaction.builder(reaction_id)
+    reaction_builder = ApplicationReaction.builder(reaction_id)
     reaction_builder.with_query(query_id)
     reaction, reaction_handle = reaction_builder.build()
 
@@ -66,9 +66,9 @@ async def build_simple_lib(
     return lib, source_handle, reaction_handle
 
 
-def make_person_props(name: str, age: int | None = None) -> "PyPropertyMap":
+def make_person_props(name: str, age: int | None = None) -> "PropertyMap":
     """Build a PropertyMap for a Person node."""
-    builder = PyPropertyMapBuilder()
+    builder = PropertyMapBuilder()
     builder.with_string("name", name)
     if age is not None:
         builder.with_integer("age", age)

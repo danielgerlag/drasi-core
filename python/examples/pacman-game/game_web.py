@@ -22,9 +22,18 @@ import time
 from flask import Flask, jsonify, request, Response
 
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_source_application import PyApplicationSource, PyPropertyMapBuilder
-from drasi_source_http import PyHttpSource
-from drasi_reaction_sse import PySseReaction
+from drasi_source_application import ApplicationSource, PropertyMapBuilder
+from drasi_source_http import (
+    HttpSource,
+    HttpSourceConfig,
+    WebhookConfig,
+    CorsConfig,
+    WebhookRoute,
+    WebhookMapping,
+    MappingCondition,
+    ElementTemplate,
+)
+from drasi_reaction_sse import SseReaction
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -194,7 +203,7 @@ def send_pacman_state(gs: GameState):
 
     async def _send():
         # Update Pacman node properties
-        p = PyPropertyMapBuilder()
+        p = PropertyMapBuilder()
         p.with_string("id", "pacman")
         p.with_string("powered", str(gs.powered).lower())
         await gs.handle.send_node_update("pacman", ["Pacman"], p.build())
@@ -204,7 +213,7 @@ def send_pacman_state(gs: GameState):
             rid = rel_id("pacman", "IS_AT")
             if old_cell is not None:
                 await gs.handle.send_delete(rid, ["IS_AT"])
-            rp = PyPropertyMapBuilder()
+            rp = PropertyMapBuilder()
             rp.with_string("id", rid)
             await gs.handle.send_relation_insert(
                 rid, ["IS_AT"], rp.build(), "pacman", new_cell
@@ -221,7 +230,7 @@ def send_ghost_state(gs: GameState, name: str):
 
     async def _send():
         # Update Ghost node properties
-        p = PyPropertyMapBuilder()
+        p = PropertyMapBuilder()
         p.with_string("id", name)
         p.with_string("alive", str(g["alive"]).lower())
         await gs.handle.send_node_update(name, ["Ghost"], p.build())
@@ -231,7 +240,7 @@ def send_ghost_state(gs: GameState, name: str):
             rid = rel_id(name, "IS_AT")
             if old_cell is not None:
                 await gs.handle.send_delete(rid, ["IS_AT"])
-            rp = PyPropertyMapBuilder()
+            rp = PropertyMapBuilder()
             rp.with_string("id", rid)
             await gs.handle.send_relation_insert(
                 rid, ["IS_AT"], rp.build(), name, new_cell
@@ -243,7 +252,7 @@ def send_ghost_state(gs: GameState, name: str):
 
 def send_dot_eaten(gs: GameState, x, y):
     dot_id = f"dot-{x}-{y}"
-    p = PyPropertyMapBuilder()
+    p = PropertyMapBuilder()
     p.with_string("id", dot_id)
     p.with_integer("x", x)
     p.with_integer("y", y)
@@ -272,14 +281,14 @@ def init_drasi_state(gs: GameState):
             for c in range(COLS):
                 if MAZE[r][c] != 1:
                     cid = cell_id(c, r)
-                    cp = PyPropertyMapBuilder()
+                    cp = PropertyMapBuilder()
                     cp.with_string("id", cid)
                     cp.with_integer("x", c)
                     cp.with_integer("y", r)
                     await gs.handle.send_node_insert(cid, ["Cell"], cp.build())
 
         # Create Pacman node
-        p = PyPropertyMapBuilder()
+        p = PropertyMapBuilder()
         p.with_string("id", "pacman")
         p.with_string("powered", "false")
         await gs.handle.send_node_insert("pacman", ["Pacman"], p.build())
@@ -287,7 +296,7 @@ def init_drasi_state(gs: GameState):
         # Pacman IS_AT relationship
         pac_cell = cell_id(*PACMAN_START)
         rid = rel_id("pacman", "IS_AT")
-        rp = PyPropertyMapBuilder()
+        rp = PropertyMapBuilder()
         rp.with_string("id", rid)
         await gs.handle.send_relation_insert(
             rid, ["IS_AT"], rp.build(), "pacman", pac_cell
@@ -296,14 +305,14 @@ def init_drasi_state(gs: GameState):
 
         # Create Ghost nodes + IS_AT relationships
         for name, info in gs.ghosts.items():
-            g = PyPropertyMapBuilder()
+            g = PropertyMapBuilder()
             g.with_string("id", name)
             g.with_string("alive", "true")
             await gs.handle.send_node_insert(name, ["Ghost"], g.build())
 
             gc = cell_id(info["pos"][0], info["pos"][1])
             rid = rel_id(name, "IS_AT")
-            rp = PyPropertyMapBuilder()
+            rp = PropertyMapBuilder()
             rp.with_string("id", rid)
             await gs.handle.send_relation_insert(
                 rid, ["IS_AT"], rp.build(), name, gc
@@ -313,12 +322,12 @@ def init_drasi_state(gs: GameState):
         # Create Pellet nodes + ON relationships to cells
         for (x, y) in gs.pellets:
             pid = f"pellet-{x}-{y}"
-            pp = PyPropertyMapBuilder()
+            pp = PropertyMapBuilder()
             pp.with_string("id", pid)
             await gs.handle.send_node_insert(pid, ["Pellet"], pp.build())
 
             rid = rel_id(pid, "ON")
-            rp = PyPropertyMapBuilder()
+            rp = PropertyMapBuilder()
             rp.with_string("id", rid)
             await gs.handle.send_relation_insert(
                 rid, ["ON"], rp.build(), pid, cell_id(x, y)
@@ -326,7 +335,7 @@ def init_drasi_state(gs: GameState):
 
         # Create Dot nodes (simple tracking, no relationships needed)
         for (x, y) in gs.dots:
-            d = PyPropertyMapBuilder()
+            d = PropertyMapBuilder()
             dot_id = f"dot-{x}-{y}"
             d.with_string("id", dot_id)
             d.with_integer("x", x)
@@ -394,68 +403,47 @@ def move_ghost(gs, name):
 # Drasi wiring
 # ---------------------------------------------------------------------------
 
-from drasi_reaction_application import PyApplicationReaction
+from drasi_reaction_application import ApplicationReaction
 
 # Webhook config for the HTTP source: the browser POSTs {dir: "up/down/left/right"}
 # to /input and the webhook maps it to an insert of a Direction node with dx/dy.
 # Using "insert" rather than "update" so that the first keypress creates the node;
 # subsequent inserts act as upserts since drasi-core replaces existing nodes.
-INPUT_WEBHOOK_CONFIG = json.dumps({
-    "host": "0.0.0.0",
-    "port": INPUT_PORT,
-    "webhooks": {
-        "error_behavior": "accept_and_log",
-        "cors": {"enabled": True, "allow_origins": ["*"]},
-        "routes": [
-            {
-                "path": "/input",
-                "methods": ["POST"],
-                "mappings": [
-                    {
-                        "when": {"field": "payload.dir", "equals": "up"},
-                        "operation": "insert",
-                        "element_type": "node",
-                        "template": {
-                            "id": "direction",
-                            "labels": ["Direction"],
-                            "properties": {"dx": 0, "dy": -1},
-                        },
-                    },
-                    {
-                        "when": {"field": "payload.dir", "equals": "down"},
-                        "operation": "insert",
-                        "element_type": "node",
-                        "template": {
-                            "id": "direction",
-                            "labels": ["Direction"],
-                            "properties": {"dx": 0, "dy": 1},
-                        },
-                    },
-                    {
-                        "when": {"field": "payload.dir", "equals": "left"},
-                        "operation": "insert",
-                        "element_type": "node",
-                        "template": {
-                            "id": "direction",
-                            "labels": ["Direction"],
-                            "properties": {"dx": -1, "dy": 0},
-                        },
-                    },
-                    {
-                        "when": {"field": "payload.dir", "equals": "right"},
-                        "operation": "insert",
-                        "element_type": "node",
-                        "template": {
-                            "id": "direction",
-                            "labels": ["Direction"],
-                            "properties": {"dx": 1, "dy": 0},
-                        },
-                    },
-                ],
-            },
+INPUT_WEBHOOK_CONFIG = HttpSourceConfig(
+    "0.0.0.0", INPUT_PORT,
+    webhooks=WebhookConfig(
+        [
+            WebhookRoute("/input", [
+                WebhookMapping(
+                    "node",
+                    ElementTemplate("direction", ["Direction"], {"dx": 0, "dy": -1}),
+                    when=MappingCondition(field="payload.dir", equals="up"),
+                    operation="insert",
+                ),
+                WebhookMapping(
+                    "node",
+                    ElementTemplate("direction", ["Direction"], {"dx": 0, "dy": 1}),
+                    when=MappingCondition(field="payload.dir", equals="down"),
+                    operation="insert",
+                ),
+                WebhookMapping(
+                    "node",
+                    ElementTemplate("direction", ["Direction"], {"dx": -1, "dy": 0}),
+                    when=MappingCondition(field="payload.dir", equals="left"),
+                    operation="insert",
+                ),
+                WebhookMapping(
+                    "node",
+                    ElementTemplate("direction", ["Direction"], {"dx": 1, "dy": 0}),
+                    when=MappingCondition(field="payload.dir", equals="right"),
+                    operation="insert",
+                ),
+            ]),
         ],
-    },
-})
+        error_behavior="accept_and_log",
+        cors=CorsConfig(allow_origins=["*"]),
+    ),
+)
 
 
 def build_drasi_full():
@@ -466,16 +454,16 @@ def build_drasi_full():
       - ApplicationReactions → server-side game logic
     """
     # --- Sources ---
-    game_source = PyApplicationSource("game")
+    game_source = ApplicationSource("game")
     handle = game_source.get_handle()
 
-    input_builder = PyHttpSource.builder("input")
-    input_builder.with_config_json(INPUT_WEBHOOK_CONFIG)
+    input_builder = HttpSource.builder("input")
+    input_builder.with_config(INPUT_WEBHOOK_CONFIG)
     input_builder.with_auto_start(True)
     input_source = input_builder.build()
 
     # --- SSE reaction → browser ---
-    sse_builder = PySseReaction.builder("game-sse")
+    sse_builder = SseReaction.builder("game-sse")
     sse_builder.with_port(SSE_PORT)
     sse_builder.with_sse_path("/events")
     sse_builder.with_queries([
@@ -489,7 +477,7 @@ def build_drasi_full():
 
     # --- ApplicationReactions → server-side game logic ---
     def make_rx(name, queries):
-        b = PyApplicationReaction.builder(name)
+        b = ApplicationReaction.builder(name)
         for q in queries:
             b.with_query(q)
         b.with_auto_start(True)

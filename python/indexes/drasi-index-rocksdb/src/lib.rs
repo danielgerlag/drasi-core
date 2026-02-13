@@ -5,7 +5,7 @@ use _drasi_core::builder::index_to_capsule;
 use _drasi_core::errors::map_err;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "RocksDbIndexProvider")]
 pub struct PyRocksDbIndexProvider {
     inner: Mutex<Option<RocksDbIndexProvider>>,
 }

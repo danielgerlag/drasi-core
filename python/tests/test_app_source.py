@@ -2,7 +2,7 @@
 
 import asyncio
 
-from drasi_source_application import PyPropertyMapBuilder
+from drasi_source_application import PropertyMapBuilder
 
 from .conftest import build_simple_lib, make_person_props
 
@@ -90,7 +90,7 @@ async def test_push_relation_insert():
     props_b = make_person_props("Bob")
     await handle.send_node_insert("b1", ["Person"], props_b)
 
-    rel_props = PyPropertyMapBuilder()
+    rel_props = PropertyMapBuilder()
     rel_props.with_string("since", "2024")
     await handle.send_relation_insert("r1", ["KNOWS"], rel_props.build(), "a1", "b1")
 

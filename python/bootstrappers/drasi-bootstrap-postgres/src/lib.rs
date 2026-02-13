@@ -5,7 +5,7 @@ use _drasi_core::errors::map_err;
 use drasi_bootstrap_postgres::{PostgresBootstrapProvider, PostgresBootstrapProviderBuilder};
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "PostgresBootstrapProviderBuilder")]
 pub struct PyPostgresBootstrapProviderBuilder {
     inner: Option<PostgresBootstrapProviderBuilder>,
 }
@@ -86,7 +86,7 @@ impl PyPostgresBootstrapProviderBuilder {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "PostgresBootstrapProvider")]
 pub struct PyPostgresBootstrapProvider {
     inner: Mutex<Option<PostgresBootstrapProvider>>,
 }

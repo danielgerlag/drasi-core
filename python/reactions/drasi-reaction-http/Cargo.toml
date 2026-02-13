@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 drasi-reaction-http-adaptive = { path = "../../../components/reactions/http-adaptive" }
+drasi-reaction-http = { path = "../../../components/reactions/http" }
 drasi-lib = { path = "../../../lib" }
 drasi-core-python = { path = "../../drasi-core" }
 pyo3 = { version = "0.22", features = ["extension-module"] }

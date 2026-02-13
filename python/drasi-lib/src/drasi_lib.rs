@@ -7,7 +7,7 @@ use crate::streaming::{EventSubscription, LogSubscription};
 use crate::types::ComponentStatus;
 
 /// The main DrasiLib instance exposed to Python
-#[pyclass]
+#[pyclass(name = "DrasiLib")]
 pub struct PyDrasiLib {
     inner: drasi_lib::DrasiLib,
 }

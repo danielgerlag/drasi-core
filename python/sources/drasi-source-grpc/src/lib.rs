@@ -5,7 +5,7 @@ use _drasi_core::errors::map_err;
 use drasi_source_grpc::{GrpcSource, GrpcSourceBuilder};
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "GrpcSourceBuilder")]
 pub struct PyGrpcSourceBuilder {
     inner: Option<GrpcSourceBuilder>,
 }
@@ -70,7 +70,7 @@ impl PyGrpcSourceBuilder {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "GrpcSource")]
 pub struct PyGrpcSource {
     inner: Mutex<Option<GrpcSource>>,
 }

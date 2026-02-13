@@ -2,10 +2,10 @@ use std::sync::Mutex;
 
 use _drasi_core::builder::source_to_capsule;
 use _drasi_core::errors::map_err;
-use drasi_source_postgres::{PostgresReplicationSource, PostgresSourceBuilder, TableKeyConfig};
+use drasi_source_postgres::{PostgresReplicationSource, PostgresSourceBuilder, SslMode, TableKeyConfig};
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "PostgresSourceBuilder")]
 pub struct PyPostgresSourceBuilder {
     inner: Option<PostgresSourceBuilder>,
 }
@@ -104,6 +104,32 @@ impl PyPostgresSourceBuilder {
         Ok(())
     }
 
+    fn with_publication_name(&mut self, name: &str) -> PyResult<()> {
+        let builder = self.inner.take().ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
+        })?;
+        self.inner = Some(builder.with_publication_name(name));
+        Ok(())
+    }
+
+    fn with_ssl_mode(&mut self, mode: &str) -> PyResult<()> {
+        let builder = self.inner.take().ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
+        })?;
+        let ssl_mode = match mode {
+            "disable" => SslMode::Disable,
+            "prefer" => SslMode::Prefer,
+            "require" => SslMode::Require,
+            _ => {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "Invalid ssl_mode: '{mode}'. Expected 'disable', 'prefer', or 'require'"
+                )));
+            }
+        };
+        self.inner = Some(builder.with_ssl_mode(ssl_mode));
+        Ok(())
+    }
+
     fn build(&mut self) -> PyResult<PyPostgresSource> {
         let builder = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("Builder already consumed")
@@ -115,7 +141,7 @@ impl PyPostgresSourceBuilder {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "PostgresSource")]
 pub struct PyPostgresSource {
     inner: Mutex<Option<PostgresReplicationSource>>,
 }

@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 
-from drasi_bootstrap_scriptfile import PyScriptFileBootstrapProvider
+from drasi_bootstrap_scriptfile import ScriptFileBootstrapProvider
 
 
 def _write_bootstrap_jsonl(path: str, nodes: list[dict]) -> None:
@@ -38,7 +38,7 @@ async def test_bootstrap_builder_single_file():
             ],
         )
 
-        builder = PyScriptFileBootstrapProvider.builder()
+        builder = ScriptFileBootstrapProvider.builder()
         builder.with_file(bootstrap_path)
         bootstrap = builder.build()
         assert bootstrap is not None
@@ -56,7 +56,7 @@ async def test_bootstrap_with_paths_static_method():
             [{"id": "x1", "labels": ["Person"], "properties": {"name": "Xander"}}],
         )
 
-        bootstrap = PyScriptFileBootstrapProvider.with_paths([bootstrap_path])
+        bootstrap = ScriptFileBootstrapProvider.with_paths([bootstrap_path])
         assert bootstrap is not None
 
         wrapper = bootstrap.into_bootstrap_wrapper()
@@ -78,7 +78,7 @@ async def test_bootstrap_multiple_files():
             [{"id": "p2", "labels": ["Person"], "properties": {"name": "Bob"}}],
         )
 
-        builder = PyScriptFileBootstrapProvider.builder()
+        builder = ScriptFileBootstrapProvider.builder()
         builder.with_file_paths([path1, path2])
         bootstrap = builder.build()
         assert bootstrap is not None

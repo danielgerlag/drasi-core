@@ -12,13 +12,13 @@ Usage:
 import asyncio
 
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_source_http import PyHttpSource
-from drasi_reaction_application import PyApplicationReaction
+from drasi_source_http import HttpSource
+from drasi_reaction_application import ApplicationReaction
 
 
 async def main():
     # Configure the HTTP source to listen on port 8080
-    http_builder = PyHttpSource.builder("sensor-source")
+    http_builder = HttpSource.builder("sensor-source")
     http_builder.with_host("0.0.0.0")
     http_builder.with_port(8080)
     http_builder.with_timeout_ms(30000)
@@ -26,7 +26,7 @@ async def main():
     http_source = http_builder.build()
 
     # Create an ApplicationReaction to receive query results
-    reaction_builder = PyApplicationReaction.builder("sensor-alerts")
+    reaction_builder = ApplicationReaction.builder("sensor-alerts")
     reaction_builder.with_query("hot-sensors")
     reaction_builder.with_auto_start(True)
     reaction, reaction_handle = reaction_builder.build()

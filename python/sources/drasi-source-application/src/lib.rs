@@ -9,7 +9,7 @@ use drasi_source_application::{
 use pyo3::prelude::*;
 
 /// Wraps `ElementPropertyMap` as an opaque Python type.
-#[pyclass]
+#[pyclass(name = "PropertyMap")]
 pub struct PyPropertyMap {
     inner: Mutex<Option<drasi_core::models::ElementPropertyMap>>,
 }
@@ -27,7 +27,7 @@ impl PyPropertyMap {
 }
 
 /// Builder for `PyPropertyMap`.
-#[pyclass]
+#[pyclass(name = "PropertyMapBuilder")]
 pub struct PyPropertyMapBuilder {
     inner: Option<PropertyMapBuilder>,
 }
@@ -92,7 +92,7 @@ impl PyPropertyMapBuilder {
 }
 
 /// Wraps `ApplicationSourceHandle` for Python.
-#[pyclass]
+#[pyclass(name = "ApplicationSourceHandle")]
 #[derive(Clone)]
 pub struct PyApplicationSourceHandle {
     inner: ApplicationSourceHandle,
@@ -181,7 +181,7 @@ fn py_object_to_json(py: Python<'_>, obj: &PyObject) -> PyResult<serde_json::Val
 }
 
 /// Wraps `ApplicationSource` for Python.
-#[pyclass]
+#[pyclass(name = "ApplicationSource")]
 pub struct PyApplicationSource {
     source: Mutex<Option<ApplicationSource>>,
     handle: ApplicationSourceHandle,

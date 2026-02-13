@@ -5,7 +5,7 @@ use _drasi_core::errors::map_err;
 use drasi_reaction_sse::{SseReaction, SseReactionBuilder};
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "SseReactionBuilder")]
 pub struct PySseReactionBuilder {
     inner: Option<SseReactionBuilder>,
 }
@@ -94,7 +94,7 @@ impl PySseReactionBuilder {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "SseReaction")]
 pub struct PySseReaction {
     inner: Mutex<Option<SseReaction>>,
 }

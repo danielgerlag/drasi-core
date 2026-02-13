@@ -3,17 +3,17 @@
 import pytest
 from drasi_core import DrasiError
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_reaction_application import PyApplicationReaction
-from drasi_source_application import PyApplicationSource
+from drasi_reaction_application import ApplicationReaction
+from drasi_source_application import ApplicationSource
 
 from .conftest import build_simple_lib
 
 
 async def test_invalid_cypher_syntax():
     """An invalid Cypher query should raise an error during build or start."""
-    source = PyApplicationSource("err-source")
+    source = ApplicationSource("err-source")
 
-    reaction_builder = PyApplicationReaction.builder("err-reaction")
+    reaction_builder = ApplicationReaction.builder("err-reaction")
     reaction_builder.with_query("err-query")
     reaction, _ = reaction_builder.build()
 

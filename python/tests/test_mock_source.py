@@ -3,13 +3,13 @@
 import asyncio
 
 from drasi_lib import ComponentStatus, DrasiLibBuilder, Query
-from drasi_reaction_application import PyApplicationReaction
-from drasi_source_mock import PyMockSource
+from drasi_reaction_application import ApplicationReaction
+from drasi_source_mock import MockSource
 
 
 async def test_mock_source_builder():
     """Build a MockSource with builder pattern."""
-    builder = PyMockSource.builder("mock-src-1")
+    builder = MockSource.builder("mock-src-1")
     builder.with_interval_ms(100)
     builder.with_auto_start(True)
     mock_source = builder.build()
@@ -18,7 +18,7 @@ async def test_mock_source_builder():
 
 async def test_mock_source_into_wrapper():
     """MockSource can be converted to a source wrapper."""
-    builder = PyMockSource.builder("mock-src-2")
+    builder = MockSource.builder("mock-src-2")
     mock_source = builder.build()
     wrapper = mock_source.into_source_wrapper()
     assert wrapper is not None
@@ -26,11 +26,11 @@ async def test_mock_source_into_wrapper():
 
 async def test_mock_source_in_lib():
     """MockSource can be registered with DrasiLib."""
-    builder = PyMockSource.builder("mock-src-3")
+    builder = MockSource.builder("mock-src-3")
     builder.with_auto_start(True)
     mock_source = builder.build()
 
-    reaction_builder = PyApplicationReaction.builder("mock-reaction")
+    reaction_builder = ApplicationReaction.builder("mock-reaction")
     reaction_builder.with_query("mock-query")
     reaction, _ = reaction_builder.build()
 
@@ -58,7 +58,7 @@ async def test_mock_source_in_lib():
 
 async def test_mock_source_auto_start_false():
     """MockSource with auto_start=False remains stopped until started."""
-    builder = PyMockSource.builder("mock-src-4")
+    builder = MockSource.builder("mock-src-4")
     builder.with_auto_start(False)
     mock_source = builder.build()
 

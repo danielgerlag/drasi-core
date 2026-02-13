@@ -6,7 +6,7 @@ from .conftest import build_simple_lib, make_person_props
 
 
 async def test_as_stream_returns_result_stream():
-    """Calling as_stream on the reaction handle returns a PyResultStream."""
+    """Calling as_stream on the reaction handle returns a ResultStream."""
     lib, handle, reaction_handle = await build_simple_lib(lib_id="app-rxn-1")
     await lib.start()
     await asyncio.sleep(0.1)

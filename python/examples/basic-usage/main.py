@@ -10,8 +10,8 @@ Demonstrates the core Drasi pattern:
 import asyncio
 
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_source_application import PyApplicationSource, PyPropertyMapBuilder
-from drasi_reaction_application import PyApplicationReaction
+from drasi_source_application import ApplicationSource, PropertyMapBuilder
+from drasi_reaction_application import ApplicationReaction
 
 
 async def main():
@@ -20,14 +20,14 @@ async def main():
     # Step 1: Create an ApplicationSource
     # This source lets you push graph data (nodes/relations) programmatically.
     print("Step 1: Creating ApplicationSource...")
-    source = PyApplicationSource("people-source")
+    source = ApplicationSource("people-source")
     handle = source.get_handle()
     print("  ✓ ApplicationSource 'people-source' created\n")
 
     # Step 2: Create an ApplicationReaction
     # This reaction collects query results so you can read them in your app.
     print("Step 2: Creating ApplicationReaction...")
-    builder = PyApplicationReaction.builder("people-reaction")
+    builder = ApplicationReaction.builder("people-reaction")
     builder.with_query("people-query")
     builder.with_auto_start(True)
     reaction, reaction_handle = builder.build()
@@ -62,7 +62,7 @@ async def main():
         ("Eve", 42),
     ]
     for name, age in people:
-        props = PyPropertyMapBuilder()
+        props = PropertyMapBuilder()
         props.with_string("name", name)
         props.with_integer("age", age)
         await handle.send_node_insert(
@@ -85,7 +85,7 @@ async def main():
 
     # Step 6: Update a person's age
     print("\nStep 6: Updating Bob's age from 25 to 26...")
-    update_props = PyPropertyMapBuilder()
+    update_props = PropertyMapBuilder()
     update_props.with_string("name", "Bob")
     update_props.with_integer("age", 26)
     await handle.send_node_update("person-bob", ["Person"], update_props.build())

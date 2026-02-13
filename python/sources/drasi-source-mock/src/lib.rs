@@ -5,7 +5,7 @@ use _drasi_core::errors::map_err;
 use drasi_source_mock::{MockSource, MockSourceBuilder};
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "MockSourceBuilder")]
 pub struct PyMockSourceBuilder {
     inner: Option<MockSourceBuilder>,
 }
@@ -46,7 +46,7 @@ impl PyMockSourceBuilder {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "MockSource")]
 pub struct PyMockSource {
     inner: Mutex<Option<MockSource>>,
 }

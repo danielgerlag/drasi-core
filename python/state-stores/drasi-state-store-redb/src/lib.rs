@@ -5,7 +5,7 @@ use _drasi_core::builder::state_store_to_capsule;
 use _drasi_core::errors::map_err;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "RedbStateStoreProvider")]
 pub struct PyRedbStateStoreProvider {
     inner: Mutex<Option<RedbStateStoreProvider>>,
 }

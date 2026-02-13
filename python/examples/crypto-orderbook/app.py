@@ -29,10 +29,10 @@ import streamlit as st
 
 from drasi_lib import DrasiLibBuilder, Query
 from drasi_source_application import (
-    PyApplicationSource,
-    PyPropertyMapBuilder,
+    ApplicationSource,
+    PropertyMapBuilder,
 )
-from drasi_reaction_application import PyApplicationReaction
+from drasi_reaction_application import ApplicationReaction
 
 
 # ---------------------------------------------------------------------------
@@ -92,11 +92,11 @@ class OrderBookState:
 def _build_drasi():
     state = OrderBookState()
 
-    source = PyApplicationSource("orderbook")
+    source = ApplicationSource("orderbook")
     source_handle = source.get_handle()
 
     def make_reaction(name, queries):
-        b = PyApplicationReaction.builder(name)
+        b = ApplicationReaction.builder(name)
         for q in queries:
             b.with_query(q)
         b.with_auto_start(True)
@@ -196,7 +196,7 @@ def _build_drasi():
 
         # Seed asset nodes
         for ticker in ASSETS:
-            p = PyPropertyMapBuilder()
+            p = PropertyMapBuilder()
             p.with_string("id", ticker)
             p.with_string("name", ASSET_NAMES[ticker])
             await source_handle.send_node_insert(ticker, ["Asset"], p.build())
@@ -322,7 +322,7 @@ def _start_workers(state, source_handle,
                 now = datetime.now(timezone.utc).isoformat()
 
                 # Update bid: filled if fully consumed, else reduce quantity
-                bp = PyPropertyMapBuilder()
+                bp = PropertyMapBuilder()
                 bp.with_string("id", bid_id)
                 bp.with_float("price", bid_price)
                 if bid_new_qty <= 0:
@@ -334,7 +334,7 @@ def _start_workers(state, source_handle,
                 await source_handle.send_node_update(bid_id, ["Bid"], bp.build())
 
                 # Update ask: filled if fully consumed, else reduce quantity
-                ap = PyPropertyMapBuilder()
+                ap = PropertyMapBuilder()
                 ap.with_string("id", ask_id)
                 ap.with_float("price", ask_price)
                 if ask_new_qty <= 0:
@@ -346,7 +346,7 @@ def _start_workers(state, source_handle,
                 await source_handle.send_node_update(ask_id, ["Ask"], ap.build())
 
                 # Insert trade node
-                tp = PyPropertyMapBuilder()
+                tp = PropertyMapBuilder()
                 tp.with_string("id", trade_id)
                 tp.with_float("price", ask_price)
                 tp.with_float("quantity", trade_qty)
@@ -381,14 +381,14 @@ def submit_order(handle, side: str, asset: str, price: float, quantity: float):
     label = "Bid" if side == "BID" else "Ask"
     rel_id = f"{oid}-for"
 
-    props = PyPropertyMapBuilder()
+    props = PropertyMapBuilder()
     props.with_string("id", oid)
     props.with_float("price", price)
     props.with_float("quantity", quantity)
     props.with_string("status", "open")
     props.with_string("submitted_at", now_iso())
 
-    rel_props = PyPropertyMapBuilder()
+    rel_props = PropertyMapBuilder()
     rel_props.with_string("id", rel_id)
 
     async def _send():

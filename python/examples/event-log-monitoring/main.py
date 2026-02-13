@@ -17,8 +17,8 @@ This example shows how to:
 import asyncio
 
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_source_application import PyApplicationSource, PyPropertyMapBuilder
-from drasi_reaction_application import PyApplicationReaction
+from drasi_source_application import ApplicationSource, PropertyMapBuilder
+from drasi_reaction_application import ApplicationReaction
 
 
 async def monitor_events(lib, component_type: str, component_id: str):
@@ -68,10 +68,10 @@ async def main():
 
     # Step 1: Create components
     print("Step 1: Creating components...")
-    source = PyApplicationSource("monitored-source")
+    source = ApplicationSource("monitored-source")
     handle = source.get_handle()
 
-    reaction_builder = PyApplicationReaction.builder("monitored-reaction")
+    reaction_builder = ApplicationReaction.builder("monitored-reaction")
     reaction_builder.with_query("monitored-query")
     reaction_builder.with_auto_start(True)
     reaction, reaction_handle = reaction_builder.build()
@@ -133,7 +133,7 @@ async def main():
     # Step 6: Push data to trigger activity
     print("\nStep 6: Pushing data to trigger events...")
     for i in range(3):
-        props = PyPropertyMapBuilder()
+        props = PropertyMapBuilder()
         props.with_string("name", f"item-{i}")
         await handle.send_node_insert(f"item-{i}", ["Item"], props.build())
         print(f"  Inserted item-{i}")

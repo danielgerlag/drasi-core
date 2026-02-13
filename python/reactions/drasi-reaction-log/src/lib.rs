@@ -9,7 +9,7 @@ use pyo3::prelude::*;
 // PyLogReactionBuilder
 // ============================================================================
 
-#[pyclass]
+#[pyclass(name = "LogReactionBuilder")]
 pub struct PyLogReactionBuilder {
     inner: Option<LogReactionBuilder>,
 }
@@ -127,7 +127,7 @@ impl PyLogReactionBuilder {
 // PyLogReaction
 // ============================================================================
 
-#[pyclass]
+#[pyclass(name = "LogReaction")]
 pub struct PyLogReaction {
     inner: Mutex<Option<LogReaction>>,
 }

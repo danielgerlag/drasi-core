@@ -9,7 +9,7 @@ use pyo3::prelude::*;
 // PyNoOpBootstrapProvider
 // ============================================================================
 
-#[pyclass]
+#[pyclass(name = "NoOpBootstrapProvider")]
 pub struct PyNoOpBootstrapProvider {
     inner: Mutex<Option<NoOpBootstrapProvider>>,
 }

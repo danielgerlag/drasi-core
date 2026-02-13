@@ -4,8 +4,8 @@ import asyncio
 
 from drasi_core import DispatchMode
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_reaction_application import PyApplicationReaction
-from drasi_source_application import PyApplicationSource
+from drasi_reaction_application import ApplicationReaction
+from drasi_source_application import ApplicationSource
 
 from .conftest import make_person_props
 
@@ -14,10 +14,10 @@ async def _build_with_dispatch_mode(
     lib_id: str, dispatch_mode: DispatchMode
 ) -> tuple:
     """Helper to build a lib with a specific dispatch mode on the query."""
-    source = PyApplicationSource(f"{lib_id}-source")
+    source = ApplicationSource(f"{lib_id}-source")
     handle = source.get_handle()
 
-    reaction_builder = PyApplicationReaction.builder(f"{lib_id}-reaction")
+    reaction_builder = ApplicationReaction.builder(f"{lib_id}-reaction")
     reaction_builder.with_query(f"{lib_id}-query")
     reaction, reaction_handle = reaction_builder.build()
 

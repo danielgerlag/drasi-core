@@ -13,7 +13,7 @@ use tokio::sync::Mutex as TokioMutex;
 // PyApplicationReactionBuilder
 // ============================================================================
 
-#[pyclass]
+#[pyclass(name = "ApplicationReactionBuilder")]
 pub struct PyApplicationReactionBuilder {
     inner: Option<ApplicationReactionBuilder>,
 }
@@ -79,7 +79,7 @@ impl PyApplicationReactionBuilder {
 // PyApplicationReaction
 // ============================================================================
 
-#[pyclass]
+#[pyclass(name = "ApplicationReaction")]
 pub struct PyApplicationReaction {
     inner: Mutex<Option<ApplicationReaction>>,
 }
@@ -110,7 +110,7 @@ impl PyApplicationReaction {
 // PyApplicationReactionHandle
 // ============================================================================
 
-#[pyclass]
+#[pyclass(name = "ApplicationReactionHandle")]
 pub struct PyApplicationReactionHandle {
     inner: ApplicationReactionHandle,
 }
@@ -138,7 +138,7 @@ impl PyApplicationReactionHandle {
 // PyResultStream
 // ============================================================================
 
-#[pyclass]
+#[pyclass(name = "ResultStream")]
 pub struct PyResultStream {
     inner: Arc<TokioMutex<ResultStream>>,
 }

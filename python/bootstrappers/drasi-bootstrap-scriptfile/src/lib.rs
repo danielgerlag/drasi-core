@@ -9,7 +9,7 @@ use pyo3::prelude::*;
 // PyScriptFileBootstrapProviderBuilder
 // ============================================================================
 
-#[pyclass]
+#[pyclass(name = "ScriptFileBootstrapProviderBuilder")]
 pub struct PyScriptFileBootstrapProviderBuilder {
     inner: Option<ScriptFileBootstrapProviderBuilder>,
 }
@@ -54,7 +54,7 @@ impl PyScriptFileBootstrapProviderBuilder {
 // PyScriptFileBootstrapProvider
 // ============================================================================
 
-#[pyclass]
+#[pyclass(name = "ScriptFileBootstrapProvider")]
 pub struct PyScriptFileBootstrapProvider {
     inner: Mutex<Option<ScriptFileBootstrapProvider>>,
 }

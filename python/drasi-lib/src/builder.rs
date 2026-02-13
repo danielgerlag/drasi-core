@@ -129,7 +129,7 @@ impl Query {
 }
 
 /// Wrapper for QueryConfig (opaque to Python, passed to builder)
-#[pyclass]
+#[pyclass(name = "QueryConfig")]
 pub struct PyQueryConfig {
     pub(crate) inner: Option<drasi_lib::QueryConfig>,
 }

@@ -7,7 +7,7 @@ use drasi_bootstrap_application::{
 };
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "ApplicationBootstrapProviderBuilder")]
 pub struct PyApplicationBootstrapProviderBuilder {
     inner: Option<ApplicationBootstrapProviderBuilder>,
 }
@@ -32,7 +32,7 @@ impl PyApplicationBootstrapProviderBuilder {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "ApplicationBootstrapProvider")]
 pub struct PyApplicationBootstrapProvider {
     inner: Mutex<Option<ApplicationBootstrapProvider>>,
 }

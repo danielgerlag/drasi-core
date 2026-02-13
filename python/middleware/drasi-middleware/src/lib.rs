@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 /// Python wrapper for SourceMiddlewareConfig
-#[pyclass]
+#[pyclass(name = "SourceMiddlewareConfig")]
 #[derive(Clone)]
 pub struct PySourceMiddlewareConfig {
     pub inner: SourceMiddlewareConfig,

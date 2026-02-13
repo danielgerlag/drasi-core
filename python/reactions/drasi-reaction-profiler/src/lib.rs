@@ -5,7 +5,7 @@ use _drasi_core::errors::map_err;
 use drasi_reaction_profiler::{ProfilerReaction, ProfilerReactionBuilder};
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "ProfilerReactionBuilder")]
 pub struct PyProfilerReactionBuilder {
     inner: Option<ProfilerReactionBuilder>,
 }
@@ -78,7 +78,7 @@ impl PyProfilerReactionBuilder {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "ProfilerReaction")]
 pub struct PyProfilerReaction {
     inner: Mutex<Option<ProfilerReaction>>,
 }

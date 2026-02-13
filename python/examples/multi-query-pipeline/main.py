@@ -12,8 +12,8 @@ Pattern:
 import asyncio
 
 from drasi_lib import DrasiLibBuilder, Query
-from drasi_source_application import PyApplicationSource, PyPropertyMapBuilder
-from drasi_reaction_application import PyApplicationReaction
+from drasi_source_application import ApplicationSource, PropertyMapBuilder
+from drasi_reaction_application import ApplicationReaction
 
 
 async def read_reaction(label: str, reaction_handle):
@@ -32,7 +32,7 @@ async def main():
 
     # Step 1: Create a single shared source
     print("Step 1: Creating shared ApplicationSource...")
-    source = PyApplicationSource("inventory-source")
+    source = ApplicationSource("inventory-source")
     handle = source.get_handle()
     print("  ✓ Source 'inventory-source' created\n")
 
@@ -40,21 +40,21 @@ async def main():
     print("Step 2: Creating three ApplicationReactions...")
 
     # Reaction A: Low stock alerts (quantity < 10)
-    builder_a = PyApplicationReaction.builder("low-stock-reaction")
+    builder_a = ApplicationReaction.builder("low-stock-reaction")
     builder_a.with_query("low-stock")
     builder_a.with_auto_start(True)
     reaction_a, handle_a = builder_a.build()
     print("  ✓ Reaction A: low-stock-reaction (qty < 10)")
 
     # Reaction B: High-value items (price > 100)
-    builder_b = PyApplicationReaction.builder("high-value-reaction")
+    builder_b = ApplicationReaction.builder("high-value-reaction")
     builder_b.with_query("high-value")
     builder_b.with_auto_start(True)
     reaction_b, handle_b = builder_b.build()
     print("  ✓ Reaction B: high-value-reaction (price > 100)")
 
     # Reaction C: Full inventory listing
-    builder_c = PyApplicationReaction.builder("all-items-reaction")
+    builder_c = ApplicationReaction.builder("all-items-reaction")
     builder_c.with_query("all-items")
     builder_c.with_auto_start(True)
     reaction_c, handle_c = builder_c.build()
@@ -116,7 +116,7 @@ async def main():
     ]
 
     for pid, name, price, qty in products:
-        props = PyPropertyMapBuilder()
+        props = PropertyMapBuilder()
         props.with_string("name", name)
         props.with_float("price", price)
         props.with_integer("quantity", qty)
@@ -143,7 +143,7 @@ async def main():
 
     # Step 6: Update a product — triggers different reactions
     print("\nStep 6: Updating Widget B price to $120 (now high-value)...")
-    update_props = PyPropertyMapBuilder()
+    update_props = PropertyMapBuilder()
     update_props.with_string("name", "Widget B")
     update_props.with_float("price", 120.0)
     update_props.with_integer("quantity", 100)
