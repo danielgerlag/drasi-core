@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pac-Man — Drasi Edition</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; display: flex; flex-direction: column;
+         align-items: center; justify-content: center; height: 100vh;
+         font-family: 'Courier New', monospace; color: #fff; }
+  #hud { font-size: 18px; margin-bottom: 8px; letter-spacing: 2px; }
+  canvas { border: 2px solid #222; image-rendering: pixelated; }
+  #overlay { position: absolute; font-size: 36px; font-weight: bold;
+             text-shadow: 2px 2px 8px #000; display: none; }
+  #status { font-size: 13px; color: #555; margin-top: 8px; }
+  .drasi-badge { position: fixed; top: 12px; right: 16px; font-size: 11px;
+                 color: #444; }
+  .drasi-badge span { color: #0f0; }
+</style>
+</head>
+<body>
+<div id="hud">Score: <span id="score">0</span> &nbsp; Lives: <span id="lives"></span>
+  &nbsp; <span id="power" style="color:#0f0;display:none">⚡ POWER</span></div>
+<div style="position:relative">
+  <canvas id="c"></canvas>
+  <div id="overlay"></div>
+</div>
+<div id="status">Connecting…</div>
+<div class="drasi-badge">Powered by <span>Drasi</span> continuous queries</div>
+
+<script>
+const CELL = 24;
+const GHOST_COLORS = {blinky:'#f00', pinky:'#ffb8ff', inky:'#0ff', clyde:'#ffb851'};
+
+let maze, COLS, ROWS, ssePort;
+let state = null;
+
+// Fetch config, then connect both SSE streams
+fetch('/config').then(r=>r.json()).then(cfg => {
+  maze = cfg.maze; COLS = cfg.cols; ROWS = cfg.rows;
+  ssePort = cfg.sse_port;
+  const canvas = document.getElementById('c');
+  canvas.width = COLS * CELL;
+  canvas.height = ROWS * CELL;
+  connectStateStream();
+  connectDrasiSSE();
+});
+
+// --- Game state SSE (from Flask /stream) ---
+function connectStateStream() {
+  const es = new EventSource('/stream');
+  es.onopen = () => {
+    document.getElementById('status').textContent = 'Game stream connected ✓';
+    document.getElementById('status').style.color = '#0a0';
+  };
+  es.onmessage = (ev) => {
+    try {
+      state = JSON.parse(ev.data);
+      draw();
+      updateHUD();
+    } catch(e) {}
+  };
+  es.onerror = () => {
+    document.getElementById('status').textContent = 'Game stream reconnecting…';
+    document.getElementById('status').style.color = '#f80';
+  };
+}
+
+// --- Drasi query SSE (from SSE Reaction) ---
+function connectDrasiSSE() {
+  const host = location.hostname || 'localhost';
+  const es = new EventSource(`http://${host}:${ssePort}/events`);
+  es.onmessage = (ev) => {
+    try {
+      const d = JSON.parse(ev.data);
+      const results = d.results || [];
+      for (const r of results) {
+        if (r.type !== 'ADD') continue;
+        if (d.queryId === 'ghost-catches-pacman') flashOverlay('💀', '#f44');
+        if (d.queryId === 'pacman-eats-pellet') flashOverlay('⚡', '#0f0');
+        if (d.queryId === 'pacman-catches-ghost') flashOverlay('+200', '#0ff');
+      }
+    } catch(e) {}
+  };
+}
+
+let flashTimer = null;
+function flashOverlay(text, color) {
+  const el = document.getElementById('overlay');
+  el.textContent = text;
+  el.style.color = color;
+  el.style.display = 'block';
+  el.style.left = '50%';
+  el.style.top = '40%';
+  el.style.transform = 'translate(-50%, -50%)';
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => el.style.display = 'none', 400);
+}
+
+function updateHUD() {
+  if (!state) return;
+  document.getElementById('score').textContent = state.score;
+  document.getElementById('lives').textContent = '♥ '.repeat(state.lives);
+  const pw = document.getElementById('power');
+  pw.style.display = state.pacman.powered ? 'inline' : 'none';
+  if (state.pacman.powered) pw.textContent = '⚡ POWER ' + state.power_timer;
+
+  const ov = document.getElementById('overlay');
+  if (state.game_over) {
+    ov.textContent = state.win ? '🏆 YOU WIN!' : '☠ GAME OVER';
+    ov.style.color = state.win ? '#0f0' : '#f44';
+    ov.style.display = 'block';
+    ov.style.left = '50%';
+    ov.style.top = '45%';
+    ov.style.transform = 'translate(-50%, -50%)';
+    clearTimeout(flashTimer);
+  }
+}
+
+function draw() {
+  if (!state || !maze) return;
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Maze
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const x = c * CELL, y = r * CELL;
+      if (maze[r][c] === 1) {
+        ctx.fillStyle = '#223';
+        ctx.fillRect(x, y, CELL, CELL);
+        ctx.fillStyle = '#33a';
+        ctx.fillRect(x+2, y+2, CELL-4, CELL-4);
+      }
+    }
+  }
+
+  // Dots
+  const dotSet = new Set(state.dots.map(d => d[0]+','+d[1]));
+  for (const key of dotSet) {
+    const [cx, cy] = key.split(',').map(Number);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(cx*CELL+CELL/2, cy*CELL+CELL/2, 2, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Pellets
+  const pelletSet = new Set(state.pellets.map(d => d[0]+','+d[1]));
+  const pulse = Math.sin(Date.now()/200) * 0.3 + 0.7;
+  for (const key of pelletSet) {
+    const [cx, cy] = key.split(',').map(Number);
+    ctx.fillStyle = `rgba(255,180,0,${pulse})`;
+    ctx.beginPath();
+    ctx.arc(cx*CELL+CELL/2, cy*CELL+CELL/2, 6, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Ghosts
+  for (const [name, g] of Object.entries(state.ghosts)) {
+    const gx = g.x * CELL, gy = g.y * CELL;
+    if (!g.alive) {
+      ctx.fillStyle = '#555';
+      ctx.font = `${CELL-4}px monospace`;
+      ctx.fillText('×', gx+6, gy+CELL-4);
+      continue;
+    }
+    const color = state.pacman.powered ? '#22f' : (GHOST_COLORS[name]||'#f0f');
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(gx+CELL/2, gy+CELL/2-2, CELL/2-2, Math.PI, 0);
+    ctx.lineTo(gx+CELL-2, gy+CELL-2);
+    const w = (CELL-4)/3;
+    for (let i = 0; i < 3; i++) {
+      ctx.quadraticCurveTo(gx+2+w*i+w/2, gy+CELL+2, gx+2+w*(i+1), gy+CELL-2);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(gx+CELL/2-4, gy+CELL/2-4, 3, 0, Math.PI*2);
+    ctx.arc(gx+CELL/2+4, gy+CELL/2-4, 3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#00f';
+    ctx.beginPath();
+    ctx.arc(gx+CELL/2-4, gy+CELL/2-4, 1.5, 0, Math.PI*2);
+    ctx.arc(gx+CELL/2+4, gy+CELL/2-4, 1.5, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Pacman
+  const px = state.pacman.x * CELL + CELL/2;
+  const py = state.pacman.y * CELL + CELL/2;
+  const mouthAngle = 0.25 * Math.PI * (Math.sin(Date.now()/80) * 0.5 + 0.5);
+  ctx.fillStyle = state.pacman.powered ? '#0f0' : '#ff0';
+  ctx.beginPath();
+  ctx.arc(px, py, CELL/2-2, mouthAngle, 2*Math.PI - mouthAngle);
+  ctx.lineTo(px, py);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// Keyboard input
+document.addEventListener('keydown', e => {
+  const map = {ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
+               w:'up', s:'down', a:'left', d:'right'};
+  const dir = map[e.key];
+  if (dir) {
+    e.preventDefault();
+    fetch('/input', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({dir})});
+  }
+  if (e.key === ' ' || e.key === 'Enter') {
+    e.preventDefault();
+    fetch('/restart', {method:'POST'});
+  }
+});
+</script>
+</body>
+</html>
