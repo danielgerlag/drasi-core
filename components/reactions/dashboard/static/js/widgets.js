@@ -56,13 +56,15 @@ if (window.Handlebars) {
   Hbs.registerHelper("min", function (field, options) {
     const rows = options?.data?.root?.rows ?? [];
     if (rows.length === 0) return 0;
-    return Math.min(...rows.map((r) => Number(r?.[field]) || 0));
+    const val = Math.min(...rows.map((r) => Number(r?.[field]) || 0));
+    return Number.isInteger(val) ? val : Number(val.toFixed(2));
   });
 
   Hbs.registerHelper("max", function (field, options) {
     const rows = options?.data?.root?.rows ?? [];
     if (rows.length === 0) return 0;
-    return Math.max(...rows.map((r) => Number(r?.[field]) || 0));
+    const val = Math.max(...rows.map((r) => Number(r?.[field]) || 0));
+    return Number.isInteger(val) ? val : Number(val.toFixed(2));
   });
 
   Hbs.registerHelper("count", function (options) {
