@@ -14,8 +14,8 @@
 
 use super::*;
 use crate::descriptor::{
-    DashboardReactionConfigDto, DashboardReactionDescriptor, DashboardWidgetDto, GridOptionsDto,
-    PredefinedDashboardDto, WidgetGridDto,
+    AggregationModeDto, DashboardReactionConfigDto, DashboardReactionDescriptor,
+    DashboardWidgetDto, GridOptionsDto, PredefinedDashboardDto, WidgetGridDto, WidgetTypeDto,
 };
 use drasi_lib::Reaction;
 use drasi_plugin_sdk::prelude::ReactionPluginDescriptor;
@@ -139,6 +139,8 @@ fn test_schema_contains_all_dto_types() {
         "reaction.dashboard.WidgetGrid",
         "reaction.dashboard.DashboardWidget",
         "reaction.dashboard.PredefinedDashboard",
+        "reaction.dashboard.WidgetType",
+        "reaction.dashboard.AggregationMode",
     ];
 
     for type_name in &expected_types {
@@ -290,14 +292,14 @@ fn test_dto_deserialize_full_config() {
 
     let w1 = &dash.widgets[0];
     assert_eq!(w1.id, "w1");
-    assert_eq!(w1.widget_type, "kpi");
+    assert_eq!(w1.widget_type, WidgetTypeDto::Kpi);
     assert_eq!(w1.title, "Total Count");
     let grid = w1.grid.as_ref().unwrap();
     assert_eq!((grid.x, grid.y, grid.w, grid.h), (0, 0, 4, 2));
 
     let w2 = &dash.widgets[1];
     assert_eq!(w2.id, "w2");
-    assert_eq!(w2.widget_type, "table");
+    assert_eq!(w2.widget_type, WidgetTypeDto::Table);
     assert!(w2.grid.is_none());
 }
 
@@ -345,7 +347,7 @@ fn test_map_grid_options() {
 fn test_map_widget_with_grid() {
     let dto = DashboardWidgetDto {
         id: "w-test".into(),
-        widget_type: "gauge".into(),
+        widget_type: WidgetTypeDto::Gauge,
         title: "Max Temp".into(),
         grid: Some(WidgetGridDto {
             x: 4,
@@ -370,7 +372,7 @@ fn test_map_widget_with_grid() {
 fn test_map_widget_without_grid_uses_default() {
     let dto = DashboardWidgetDto {
         id: "w-no-grid".into(),
-        widget_type: "table".into(),
+        widget_type: WidgetTypeDto::Table,
         title: "Data".into(),
         grid: None,
         config: serde_json::json!({}),
@@ -394,7 +396,7 @@ fn test_map_predefined_dashboard() {
         }),
         widgets: vec![DashboardWidgetDto {
             id: "w1".into(),
-            widget_type: "kpi".into(),
+            widget_type: WidgetTypeDto::Kpi,
             title: "Count".into(),
             grid: Some(WidgetGridDto {
                 x: 0,
@@ -528,4 +530,143 @@ async fn test_create_reaction_with_env_var_config_value() {
     let props = reaction.properties();
     assert_eq!(props["host"], "0.0.0.0");
     assert_eq!(props["port"], 4000);
+}
+
+// -----------------------------------------------------------------------
+// Enum serialization / deserialization tests
+// -----------------------------------------------------------------------
+
+#[test]
+fn test_widget_type_enum_serializes_to_snake_case() {
+    let cases = [
+        (WidgetTypeDto::LineChart, "line_chart"),
+        (WidgetTypeDto::BarChart, "bar_chart"),
+        (WidgetTypeDto::PieChart, "pie_chart"),
+        (WidgetTypeDto::Table, "table"),
+        (WidgetTypeDto::Gauge, "gauge"),
+        (WidgetTypeDto::Kpi, "kpi"),
+        (WidgetTypeDto::Text, "text"),
+        (WidgetTypeDto::Map, "map"),
+    ];
+
+    for (variant, expected) in &cases {
+        let json = serde_json::to_value(variant).unwrap();
+        assert_eq!(json.as_str().unwrap(), *expected, "WidgetType::{variant:?}");
+    }
+}
+
+#[test]
+fn test_widget_type_enum_deserializes_from_snake_case() {
+    for name in &[
+        "line_chart",
+        "bar_chart",
+        "pie_chart",
+        "table",
+        "gauge",
+        "kpi",
+        "text",
+        "map",
+    ] {
+        let json = serde_json::Value::String(name.to_string());
+        let result: Result<WidgetTypeDto, _> = serde_json::from_value(json);
+        assert!(result.is_ok(), "should deserialize '{name}'");
+    }
+}
+
+#[test]
+fn test_widget_type_rejects_invalid_value() {
+    let json = serde_json::Value::String("invalid_widget".into());
+    let result: Result<WidgetTypeDto, _> = serde_json::from_value(json);
+    assert!(result.is_err(), "invalid widget type should fail");
+}
+
+#[test]
+fn test_aggregation_mode_enum_serializes_to_snake_case() {
+    let cases = [
+        (AggregationModeDto::Last, "last"),
+        (AggregationModeDto::First, "first"),
+        (AggregationModeDto::Sum, "sum"),
+        (AggregationModeDto::Avg, "avg"),
+        (AggregationModeDto::Count, "count"),
+        (AggregationModeDto::Min, "min"),
+        (AggregationModeDto::Max, "max"),
+        (AggregationModeDto::Filter, "filter"),
+    ];
+
+    for (variant, expected) in &cases {
+        let json = serde_json::to_value(variant).unwrap();
+        assert_eq!(
+            json.as_str().unwrap(),
+            *expected,
+            "AggregationMode::{variant:?}"
+        );
+    }
+}
+
+#[test]
+fn test_aggregation_mode_rejects_invalid_value() {
+    let json = serde_json::Value::String("median".into());
+    let result: Result<AggregationModeDto, _> = serde_json::from_value(json);
+    assert!(result.is_err(), "invalid aggregation mode should fail");
+}
+
+#[test]
+fn test_map_widget_preserves_enum_as_snake_case_string() {
+    let dto = DashboardWidgetDto {
+        id: "w-enum".into(),
+        widget_type: WidgetTypeDto::BarChart,
+        title: "Test".into(),
+        grid: None,
+        config: serde_json::json!({}),
+    };
+    let domain = crate::descriptor::map_widget(&dto);
+    assert_eq!(domain.widget_type, "bar_chart");
+}
+
+#[test]
+fn test_schema_widget_type_is_enum_with_all_variants() {
+    let desc = DashboardReactionDescriptor;
+    let schema_json = desc.config_schema_json();
+    let schemas: serde_json::Value = serde_json::from_str(&schema_json).unwrap();
+
+    let widget_type_schema = &schemas["reaction.dashboard.WidgetType"];
+    let enum_values = widget_type_schema["enum"]
+        .as_array()
+        .expect("WidgetType schema must have enum array");
+
+    let expected = [
+        "line_chart",
+        "bar_chart",
+        "pie_chart",
+        "table",
+        "gauge",
+        "kpi",
+        "text",
+        "map",
+    ];
+    let actual: Vec<&str> = enum_values.iter().filter_map(|v| v.as_str()).collect();
+    for e in &expected {
+        assert!(actual.contains(e), "WidgetType enum must contain '{e}'");
+    }
+}
+
+#[test]
+fn test_schema_aggregation_mode_is_enum_with_all_variants() {
+    let desc = DashboardReactionDescriptor;
+    let schema_json = desc.config_schema_json();
+    let schemas: serde_json::Value = serde_json::from_str(&schema_json).unwrap();
+
+    let agg_schema = &schemas["reaction.dashboard.AggregationMode"];
+    let enum_values = agg_schema["enum"]
+        .as_array()
+        .expect("AggregationMode schema must have enum array");
+
+    let expected = ["last", "first", "sum", "avg", "count", "min", "max", "filter"];
+    let actual: Vec<&str> = enum_values.iter().filter_map(|v| v.as_str()).collect();
+    for e in &expected {
+        assert!(
+            actual.contains(e),
+            "AggregationMode enum must contain '{e}'"
+        );
+    }
 }

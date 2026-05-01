@@ -68,6 +68,52 @@ pub struct WidgetGridDto {
     pub h: u32,
 }
 
+/// Supported widget types.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema)]
+#[schema(as = reaction::dashboard::WidgetType)]
+#[serde(rename_all = "snake_case")]
+pub enum WidgetTypeDto {
+    /// Line chart — track trends over time.
+    LineChart,
+    /// Bar chart — compare values across categories.
+    BarChart,
+    /// Pie chart — show proportions of a whole.
+    PieChart,
+    /// Table — tabular data display.
+    Table,
+    /// Gauge — radial gauge for a single metric.
+    Gauge,
+    /// KPI — large single-value indicator.
+    Kpi,
+    /// Text — Handlebars markdown template.
+    Text,
+    /// Map — geographic map visualization.
+    Map,
+}
+
+/// Aggregation mode for KPI and Gauge widgets.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema)]
+#[schema(as = reaction::dashboard::AggregationMode)]
+#[serde(rename_all = "snake_case")]
+pub enum AggregationModeDto {
+    /// Use the last received value (default).
+    Last,
+    /// Use the first received value.
+    First,
+    /// Sum all values.
+    Sum,
+    /// Average all values.
+    Avg,
+    /// Count of rows.
+    Count,
+    /// Minimum value.
+    Min,
+    /// Maximum value.
+    Max,
+    /// Filter to a specific row by field/value match.
+    Filter,
+}
+
 /// A single widget in a predefined dashboard.
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[schema(as = reaction::dashboard::DashboardWidget)]
@@ -76,9 +122,9 @@ pub struct DashboardWidgetDto {
     /// Unique widget identifier.
     pub id: String,
 
-    /// Widget type: "table", "kpi", "gauge", "bar", "line", "pie", or "text".
+    /// Widget type.
     #[serde(rename = "type")]
-    pub widget_type: String,
+    pub widget_type: WidgetTypeDto,
 
     /// Display title shown in the widget header.
     pub title: String,
@@ -176,9 +222,14 @@ pub(crate) fn map_widget_grid(dto: &WidgetGridDto) -> WidgetGrid {
 }
 
 pub(crate) fn map_widget(dto: &DashboardWidgetDto) -> DashboardWidget {
+    // Serialize the enum to its snake_case string (e.g. WidgetTypeDto::BarChart → "bar_chart")
+    let widget_type_str = serde_json::to_value(&dto.widget_type)
+        .ok()
+        .and_then(|v| v.as_str().map(String::from))
+        .unwrap_or_default();
     DashboardWidget {
         id: dto.id.clone(),
-        widget_type: dto.widget_type.clone(),
+        widget_type: widget_type_str,
         title: dto.title.clone(),
         grid: dto.grid.as_ref().map(map_widget_grid).unwrap_or_default(),
         config: dto.config.clone(),
@@ -212,6 +263,8 @@ pub(crate) fn map_predefined_dashboard(dto: &PredefinedDashboardDto) -> Dashboar
     WidgetGridDto,
     DashboardWidgetDto,
     PredefinedDashboardDto,
+    WidgetTypeDto,
+    AggregationModeDto,
 )))]
 struct DashboardReactionSchemas;
 
