@@ -211,9 +211,7 @@ impl QuerySnapshotStore {
     /// Apply a query result's diffs to the accumulated snapshot.
     pub async fn apply(&self, query_result: &QueryResult) {
         let mut snapshots = self.snapshots.write().await;
-        let rows = snapshots
-            .entry(query_result.query_id.clone())
-            .or_default();
+        let rows = snapshots.entry(query_result.query_id.clone()).or_default();
 
         for diff in &query_result.results {
             match diff {

@@ -180,11 +180,7 @@ pub(crate) fn map_widget(dto: &DashboardWidgetDto) -> DashboardWidget {
         id: dto.id.clone(),
         widget_type: dto.widget_type.clone(),
         title: dto.title.clone(),
-        grid: dto
-            .grid
-            .as_ref()
-            .map(map_widget_grid)
-            .unwrap_or_default(),
+        grid: dto.grid.as_ref().map(map_widget_grid).unwrap_or_default(),
         config: dto.config.clone(),
     }
 }

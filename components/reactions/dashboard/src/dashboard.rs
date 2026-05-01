@@ -105,7 +105,14 @@ impl DashboardReaction {
         auto_start: bool,
         predefined_dashboards: Vec<DashboardConfig>,
     ) -> Self {
-        Self::create_internal(id, queries, config, priority_queue_capacity, auto_start, predefined_dashboards)
+        Self::create_internal(
+            id,
+            queries,
+            config,
+            priority_queue_capacity,
+            auto_start,
+            predefined_dashboards,
+        )
     }
 
     fn create_internal(
@@ -234,22 +241,20 @@ impl Reaction for DashboardReaction {
                                 dashboard.id
                             );
                         }
-                        Ok(None) => {
-                            match storage.save_dashboard(dashboard.clone()).await {
-                                Ok(_) => {
-                                    info!(
-                                        "seeded predefined dashboard '{}' ({})",
-                                        dashboard.name, dashboard.id
-                                    );
-                                }
-                                Err(err) => {
-                                    error!(
-                                        "failed to seed predefined dashboard '{}': {err}",
-                                        dashboard.id
-                                    );
-                                }
+                        Ok(None) => match storage.save_dashboard(dashboard.clone()).await {
+                            Ok(_) => {
+                                info!(
+                                    "seeded predefined dashboard '{}' ({})",
+                                    dashboard.name, dashboard.id
+                                );
                             }
-                        }
+                            Err(err) => {
+                                error!(
+                                    "failed to seed predefined dashboard '{}': {err}",
+                                    dashboard.id
+                                );
+                            }
+                        },
                         Err(err) => {
                             error!(
                                 "failed to check predefined dashboard '{}': {err}",
