@@ -661,7 +661,9 @@ fn test_schema_aggregation_mode_is_enum_with_all_variants() {
         .as_array()
         .expect("AggregationMode schema must have enum array");
 
-    let expected = ["last", "first", "sum", "avg", "count", "min", "max", "filter"];
+    let expected = [
+        "last", "first", "sum", "avg", "count", "min", "max", "filter",
+    ];
     let actual: Vec<&str> = enum_values.iter().filter_map(|v| v.as_str()).collect();
     for e in &expected {
         assert!(
