@@ -672,3 +672,235 @@ fn test_schema_aggregation_mode_is_enum_with_all_variants() {
         );
     }
 }
+
+// -----------------------------------------------------------------------
+// Snapshot store tests — verifies rows vs aggregation separation
+// -----------------------------------------------------------------------
+
+use crate::websocket::QuerySnapshotStore;
+use drasi_lib::channels::{QueryResult, ResultDiff};
+use chrono::Utc;
+use std::collections::HashMap;
+
+fn make_query_result(query_id: &str, diffs: Vec<ResultDiff>) -> QueryResult {
+    QueryResult {
+        query_id: query_id.to_string(),
+        timestamp: Utc::now(),
+        results: diffs,
+        metadata: HashMap::new(),
+        profiling: None,
+    }
+}
+
+#[tokio::test]
+async fn test_snapshot_store_add_rows() {
+    let store = QuerySnapshotStore::new();
+    let qr = make_query_result(
+        "q1",
+        vec![
+            ResultDiff::Add {
+                data: serde_json::json!({"id": 1, "name": "Alice"}),
+            },
+            ResultDiff::Add {
+                data: serde_json::json!({"id": 2, "name": "Bob"}),
+            },
+        ],
+    );
+    store.apply(&qr).await;
+    let snapshot = store.get_snapshot("q1").await;
+    assert_eq!(snapshot.rows.len(), 2);
+    assert!(snapshot.aggregation.is_none());
+}
+
+#[tokio::test]
+async fn test_snapshot_store_aggregation_separated_from_rows() {
+    let store = QuerySnapshotStore::new();
+    let qr = make_query_result(
+        "q1",
+        vec![
+            ResultDiff::Add {
+                data: serde_json::json!({"id": 1, "temp": 22.5}),
+            },
+            ResultDiff::Aggregation {
+                before: None,
+                after: serde_json::json!({"avg_temp": 22.5, "count": 1}),
+            },
+        ],
+    );
+    store.apply(&qr).await;
+    let snapshot = store.get_snapshot("q1").await;
+    assert_eq!(snapshot.rows.len(), 1, "aggregation must not appear in rows");
+    assert_eq!(
+        snapshot.aggregation,
+        Some(serde_json::json!({"avg_temp": 22.5, "count": 1}))
+    );
+}
+
+#[tokio::test]
+async fn test_snapshot_store_aggregation_update_replaces() {
+    let store = QuerySnapshotStore::new();
+    store
+        .apply(&make_query_result(
+            "q1",
+            vec![ResultDiff::Aggregation {
+                before: None,
+                after: serde_json::json!({"count": 1}),
+            }],
+        ))
+        .await;
+    store
+        .apply(&make_query_result(
+            "q1",
+            vec![ResultDiff::Aggregation {
+                before: Some(serde_json::json!({"count": 1})),
+                after: serde_json::json!({"count": 2}),
+            }],
+        ))
+        .await;
+    let snapshot = store.get_snapshot("q1").await;
+    assert!(snapshot.rows.is_empty());
+    assert_eq!(
+        snapshot.aggregation,
+        Some(serde_json::json!({"count": 2}))
+    );
+}
+
+#[tokio::test]
+async fn test_snapshot_store_delete_row() {
+    let store = QuerySnapshotStore::new();
+    store
+        .apply(&make_query_result(
+            "q1",
+            vec![
+                ResultDiff::Add {
+                    data: serde_json::json!({"id": 1}),
+                },
+                ResultDiff::Add {
+                    data: serde_json::json!({"id": 2}),
+                },
+            ],
+        ))
+        .await;
+    store
+        .apply(&make_query_result(
+            "q1",
+            vec![ResultDiff::Delete {
+                data: serde_json::json!({"id": 1}),
+            }],
+        ))
+        .await;
+    let snapshot = store.get_snapshot("q1").await;
+    assert_eq!(snapshot.rows.len(), 1);
+    assert_eq!(snapshot.rows[0]["id"], 2);
+}
+
+#[tokio::test]
+async fn test_snapshot_store_update_row() {
+    let store = QuerySnapshotStore::new();
+    store
+        .apply(&make_query_result(
+            "q1",
+            vec![ResultDiff::Add {
+                data: serde_json::json!({"id": 1, "name": "Alice"}),
+            }],
+        ))
+        .await;
+    store
+        .apply(&make_query_result(
+            "q1",
+            vec![ResultDiff::Update {
+                data: serde_json::json!({"id": 1, "name": "Alicia"}),
+                before: serde_json::json!({"id": 1, "name": "Alice"}),
+                after: serde_json::json!({"id": 1, "name": "Alicia"}),
+                grouping_keys: None,
+            }],
+        ))
+        .await;
+    let snapshot = store.get_snapshot("q1").await;
+    assert_eq!(snapshot.rows.len(), 1);
+    assert_eq!(snapshot.rows[0]["name"], "Alicia");
+}
+
+#[tokio::test]
+async fn test_snapshot_store_fifo_eviction_rows_only() {
+    let store = QuerySnapshotStore::with_max_rows(2);
+    store
+        .apply(&make_query_result(
+            "q1",
+            vec![
+                ResultDiff::Add {
+                    data: serde_json::json!({"id": 1}),
+                },
+                ResultDiff::Add {
+                    data: serde_json::json!({"id": 2}),
+                },
+                ResultDiff::Add {
+                    data: serde_json::json!({"id": 3}),
+                },
+                ResultDiff::Aggregation {
+                    before: None,
+                    after: serde_json::json!({"total": 6}),
+                },
+            ],
+        ))
+        .await;
+    let snapshot = store.get_snapshot("q1").await;
+    // Should keep only 2 newest rows (evict id:1)
+    assert_eq!(snapshot.rows.len(), 2);
+    assert_eq!(snapshot.rows[0]["id"], 2);
+    assert_eq!(snapshot.rows[1]["id"], 3);
+    // Aggregation must NOT be evicted
+    assert_eq!(
+        snapshot.aggregation,
+        Some(serde_json::json!({"total": 6}))
+    );
+}
+
+#[tokio::test]
+async fn test_snapshot_store_empty_query() {
+    let store = QuerySnapshotStore::new();
+    let snapshot = store.get_snapshot("nonexistent").await;
+    assert!(snapshot.rows.is_empty());
+    assert!(snapshot.aggregation.is_none());
+}
+
+#[tokio::test]
+async fn test_snapshot_store_has_data() {
+    let store = QuerySnapshotStore::new();
+    assert!(!store.has_data("q1").await);
+    store
+        .apply(&make_query_result(
+            "q1",
+            vec![ResultDiff::Aggregation {
+                before: None,
+                after: serde_json::json!({"count": 1}),
+            }],
+        ))
+        .await;
+    assert!(store.has_data("q1").await);
+}
+
+#[tokio::test]
+async fn test_snapshot_serialization_format() {
+    let store = QuerySnapshotStore::new();
+    store
+        .apply(&make_query_result(
+            "q1",
+            vec![
+                ResultDiff::Add {
+                    data: serde_json::json!({"id": 1}),
+                },
+                ResultDiff::Aggregation {
+                    before: None,
+                    after: serde_json::json!({"total": 42}),
+                },
+            ],
+        ))
+        .await;
+    let snapshot = store.get_snapshot("q1").await;
+    let json = serde_json::to_value(&snapshot).unwrap();
+    // Verify the JSON structure the frontend expects
+    assert!(json["rows"].is_array());
+    assert_eq!(json["rows"].as_array().unwrap().len(), 1);
+    assert_eq!(json["aggregation"]["total"], 42);
+}

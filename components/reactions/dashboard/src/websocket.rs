@@ -177,11 +177,19 @@ impl WebSocketHub {
     }
 }
 
-/// In-memory snapshot store that accumulates query result rows.
+/// Snapshot of accumulated query results, separating rows from aggregation state.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct QuerySnapshot {
+    pub rows: Vec<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub aggregation: Option<Value>,
+}
+
+/// In-memory snapshot store that accumulates query result rows and aggregation state.
 /// Clients can fetch the current state to populate widgets on first load.
 #[derive(Clone)]
 pub struct QuerySnapshotStore {
-    snapshots: Arc<RwLock<HashMap<String, Vec<Value>>>>,
+    snapshots: Arc<RwLock<HashMap<String, QuerySnapshot>>>,
     max_rows_per_query: usize,
 }
 
@@ -211,53 +219,54 @@ impl QuerySnapshotStore {
     /// Apply a query result's diffs to the accumulated snapshot.
     pub async fn apply(&self, query_result: &QueryResult) {
         let mut snapshots = self.snapshots.write().await;
-        let rows = snapshots.entry(query_result.query_id.clone()).or_default();
+        let snapshot = snapshots.entry(query_result.query_id.clone()).or_default();
 
         for diff in &query_result.results {
             match diff {
                 ResultDiff::Add { data } => {
-                    rows.push(data.clone());
+                    snapshot.rows.push(data.clone());
                 }
                 ResultDiff::Delete { data } => {
-                    if let Some(idx) = find_row_index(rows, data) {
-                        rows.remove(idx);
+                    if let Some(idx) = find_row_index(&snapshot.rows, data) {
+                        snapshot.rows.remove(idx);
                     }
                 }
                 ResultDiff::Update { before, after, .. } => {
-                    if let Some(idx) = find_row_index(rows, before) {
-                        rows[idx] = after.clone();
-                    } else if let Some(idx) = find_row_index(rows, after) {
-                        rows[idx] = after.clone();
+                    if let Some(idx) = find_row_index(&snapshot.rows, before) {
+                        snapshot.rows[idx] = after.clone();
+                    } else if let Some(idx) = find_row_index(&snapshot.rows, after) {
+                        snapshot.rows[idx] = after.clone();
                     } else {
-                        rows.push(after.clone());
+                        snapshot.rows.push(after.clone());
                     }
                 }
-                ResultDiff::Aggregation { before, after } => {
-                    if let Some(prev) = before {
-                        if let Some(idx) = find_row_index(rows, prev) {
-                            rows[idx] = after.clone();
-                        } else {
-                            rows.push(after.clone());
-                        }
-                    } else {
-                        rows.push(after.clone());
-                    }
+                ResultDiff::Aggregation { after, .. } => {
+                    snapshot.aggregation = Some(after.clone());
                 }
                 ResultDiff::Noop => {}
             }
         }
 
         // Evict oldest rows if over limit (FIFO)
-        if rows.len() > self.max_rows_per_query {
-            let excess = rows.len() - self.max_rows_per_query;
-            rows.drain(..excess);
+        if snapshot.rows.len() > self.max_rows_per_query {
+            let excess = snapshot.rows.len() - self.max_rows_per_query;
+            snapshot.rows.drain(..excess);
         }
     }
 
-    /// Get the current accumulated rows for a query.
-    pub async fn get_snapshot(&self, query_id: &str) -> Vec<Value> {
+    /// Get the current accumulated snapshot for a query.
+    pub async fn get_snapshot(&self, query_id: &str) -> QuerySnapshot {
         let snapshots = self.snapshots.read().await;
         snapshots.get(query_id).cloned().unwrap_or_default()
+    }
+
+    /// Check whether there is any data (rows or aggregation) for a query.
+    pub async fn has_data(&self, query_id: &str) -> bool {
+        let snapshots = self.snapshots.read().await;
+        snapshots
+            .get(query_id)
+            .map(|s| !s.rows.is_empty() || s.aggregation.is_some())
+            .unwrap_or(false)
     }
 }
 

@@ -510,8 +510,10 @@ export class DashboardDesigner {
     try {
       const response = await fetch(`/api/queries/${encodeURIComponent(queryId)}/snapshot`);
       if (!response.ok) return;
-      const rows = await response.json();
-      if (!Array.isArray(rows) || rows.length === 0) return;
+      const snapshot = await response.json();
+      const rows = Array.isArray(snapshot.rows) ? snapshot.rows : [];
+      const aggregation = snapshot.aggregation ?? null;
+      if (rows.length === 0 && aggregation === null) return;
 
       for (const widget of this.dashboard.widgets) {
         if ((widget.config?.queryId ?? "") !== queryId) continue;
@@ -520,6 +522,9 @@ export class DashboardDesigner {
         if (runtime.rows.length === 0 && runtime.aggregation === null) {
           for (const row of rows) {
             applyResultDiff(runtime, { op: "add", data: row });
+          }
+          if (aggregation !== null) {
+            applyResultDiff(runtime, { op: "aggregation", after: aggregation });
           }
           this.runtimeByWidgetId.set(widget.id, runtime);
           this.renderWidget(widget.id);

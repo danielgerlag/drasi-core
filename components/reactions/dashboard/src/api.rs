@@ -15,7 +15,7 @@
 //! REST API handlers for dashboard CRUD and query metadata.
 
 use crate::storage::{DashboardConfig, DashboardStorage, DashboardWidget, GridOptions};
-use crate::websocket::QuerySnapshotStore;
+use crate::websocket::{QuerySnapshot, QuerySnapshotStore};
 use anyhow::anyhow;
 use axum::{
     body::{to_bytes, Body},
@@ -267,10 +267,10 @@ async fn list_queries(State(state): State<ApiState>) -> ApiResult<Json<QueryList
 async fn get_query_snapshot(
     State(state): State<ApiState>,
     Path(query_id): Path<String>,
-) -> ApiResult<Json<Vec<serde_json::Value>>> {
-    let rows = state.snapshot_store.get_snapshot(&query_id).await;
-    if !rows.is_empty() {
-        return Ok(Json(rows));
+) -> ApiResult<Json<QuerySnapshot>> {
+    let snapshot = state.snapshot_store.get_snapshot(&query_id).await;
+    if !snapshot.rows.is_empty() || snapshot.aggregation.is_some() {
+        return Ok(Json(snapshot));
     }
 
     // Fall back to the results API if configured and local snapshot is empty.
@@ -286,12 +286,15 @@ async fn get_query_snapshot(
             .unwrap_or_default();
         if let Ok(response) = client.get(&url).send().await {
             if let Ok(rows) = response.json::<Vec<serde_json::Value>>().await {
-                return Ok(Json(rows));
+                return Ok(Json(QuerySnapshot {
+                    rows,
+                    aggregation: None,
+                }));
             }
         }
     }
 
-    Ok(Json(rows))
+    Ok(Json(snapshot))
 }
 
 #[cfg(test)]
