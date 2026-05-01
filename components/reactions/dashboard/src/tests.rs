@@ -678,8 +678,8 @@ fn test_schema_aggregation_mode_is_enum_with_all_variants() {
 // -----------------------------------------------------------------------
 
 use crate::websocket::QuerySnapshotStore;
-use drasi_lib::channels::{QueryResult, ResultDiff};
 use chrono::Utc;
+use drasi_lib::channels::{QueryResult, ResultDiff};
 use std::collections::HashMap;
 
 fn make_query_result(query_id: &str, diffs: Vec<ResultDiff>) -> QueryResult {
@@ -729,7 +729,11 @@ async fn test_snapshot_store_aggregation_separated_from_rows() {
     );
     store.apply(&qr).await;
     let snapshot = store.get_snapshot("q1").await;
-    assert_eq!(snapshot.rows.len(), 1, "aggregation must not appear in rows");
+    assert_eq!(
+        snapshot.rows.len(),
+        1,
+        "aggregation must not appear in rows"
+    );
     assert_eq!(
         snapshot.aggregation,
         Some(serde_json::json!({"avg_temp": 22.5, "count": 1}))
@@ -759,10 +763,7 @@ async fn test_snapshot_store_aggregation_update_replaces() {
         .await;
     let snapshot = store.get_snapshot("q1").await;
     assert!(snapshot.rows.is_empty());
-    assert_eq!(
-        snapshot.aggregation,
-        Some(serde_json::json!({"count": 2}))
-    );
+    assert_eq!(snapshot.aggregation, Some(serde_json::json!({"count": 2})));
 }
 
 #[tokio::test]
@@ -850,10 +851,7 @@ async fn test_snapshot_store_fifo_eviction_rows_only() {
     assert_eq!(snapshot.rows[0]["id"], 2);
     assert_eq!(snapshot.rows[1]["id"], 3);
     // Aggregation must NOT be evicted
-    assert_eq!(
-        snapshot.aggregation,
-        Some(serde_json::json!({"total": 6}))
-    );
+    assert_eq!(snapshot.aggregation, Some(serde_json::json!({"total": 6})));
 }
 
 #[tokio::test]
