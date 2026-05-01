@@ -122,9 +122,12 @@ export function closeModal() {
 export function confirmModal({ title = "Confirm", message, confirmLabel = "Confirm", confirmVariant = "danger" }) {
   return new Promise((resolve) => {
     let settled = false;
+    const messageEl = document.createElement("p");
+    messageEl.className = "modal-message";
+    messageEl.textContent = message;
     openModal({
       title,
-      body: `<p class="modal-message">${message}</p>`,
+      body: messageEl,
       size: "sm",
       actions: [
         { label: "Cancel", variant: "ghost", action: () => { settled = true; closeModal(); resolve(false); } },

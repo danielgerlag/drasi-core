@@ -208,7 +208,7 @@ impl DashboardStorage {
     }
 
     /// Save (create/update) a dashboard.
-    /// Returns an error if the ID is explicitly set to an empty or whitespace-only string.
+    /// If the ID is empty or whitespace-only, a new UUID is generated automatically.
     pub async fn save_dashboard(&self, mut dashboard: DashboardConfig) -> Result<DashboardConfig> {
         if dashboard.id.trim().is_empty() {
             dashboard.id = Uuid::new_v4().to_string();

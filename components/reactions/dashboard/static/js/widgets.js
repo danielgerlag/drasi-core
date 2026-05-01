@@ -484,18 +484,51 @@ function renderTable(widget, runtime, container) {
   const columns = cfgCols.length > 0 ? cfgCols : Object.keys(rows[0] ?? {});
 
   const isNumeric = (v) => typeof v === "number" || (typeof v === "string" && /^-?\d+(\.\d+)?$/.test(v));
-  const fmtCell = (v) => {
-    if (v == null) return `<span style="color:var(--text-muted)">—</span>`;
-    if (isNumeric(v)) return `<span style="font-variant-numeric:tabular-nums">${formatNumber(Number(v))}</span>`;
-    return String(v);
+
+  const appendCellContent = (td, v) => {
+    if (v == null) {
+      const span = document.createElement("span");
+      span.style.color = "var(--text-muted)";
+      span.textContent = "—";
+      td.appendChild(span);
+      return;
+    }
+    if (isNumeric(v)) {
+      const span = document.createElement("span");
+      span.style.fontVariantNumeric = "tabular-nums";
+      span.textContent = formatNumber(Number(v));
+      td.appendChild(span);
+      return;
+    }
+    td.textContent = String(v);
   };
 
-  const thead = `<tr>${columns.map((c) => `<th>${c}</th>`).join("")}</tr>`;
-  const tbody = rows
-    .map((r) => `<tr>${columns.map((c) => `<td>${fmtCell(r?.[c])}</td>`).join("")}</tr>`)
-    .join("");
+  const table = document.createElement("table");
+  table.className = "widget-table";
 
-  container.innerHTML = `<table class="widget-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  columns.forEach((c) => {
+    const th = document.createElement("th");
+    th.textContent = String(c);
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+
+  const tbody = document.createElement("tbody");
+  rows.forEach((r) => {
+    const tr = document.createElement("tr");
+    columns.forEach((c) => {
+      const td = document.createElement("td");
+      appendCellContent(td, r?.[c]);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(thead);
+  table.appendChild(tbody);
+  container.replaceChildren(table);
 }
 
 function renderKpi(widget, runtime, container) {
