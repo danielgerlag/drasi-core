@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Drasi Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/js/vendor/gridstack.min.css" />
+  <link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body>
+  <!-- ─── Header ─────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="header-brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <h1>Drasi Dashboard</h1>
+    </div>
+    <div class="header-right">
+      <div id="socket-status" class="status-indicator">
+        <span class="status-dot"></span>
+        <span class="status-text">Disconnected</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ─── Main Content ───────────────────────────────────── -->
+  <main class="app-main">
+
+    <!-- Dashboard List View -->
+    <section id="dashboard-list-view" class="view active">
+      <div class="toolbar">
+        <h2>Dashboards</h2>
+        <div class="toolbar-spacer"></div>
+        <button id="new-dashboard-btn" type="button" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Dashboard
+        </button>
+      </div>
+      <div id="dashboard-list" class="dashboard-list"></div>
+    </section>
+
+    <!-- Dashboard Editor View -->
+    <section id="dashboard-editor-view" class="view">
+      <div class="toolbar">
+        <button id="back-btn" type="button" class="btn btn-ghost">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
+        </button>
+        <div class="toolbar-spacer"></div>
+        <button id="add-widget-btn" type="button" class="btn btn-ghost">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Widget
+        </button>
+        <button id="save-dashboard-btn" type="button" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save
+        </button>
+      </div>
+      <div class="editor-layout">
+        <aside class="editor-sidebar">
+          <div>
+            <input
+              type="text"
+              id="editor-title"
+              class="dashboard-name-editable"
+              placeholder="Dashboard name"
+              value="Dashboard"
+            />
+          </div>
+          <div>
+            <div class="sidebar-section-title">Available Queries</div>
+            <div id="query-list"></div>
+          </div>
+          <p class="hint">
+            Drag and resize widgets on the grid. Click the
+            <strong>⚙</strong> icon on any widget to configure it.
+          </p>
+        </aside>
+        <div class="editor-canvas">
+          <div class="grid-stack" id="dashboard-grid"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ─── Toast Container ────────────────────────────────── -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ─── Scripts ────────────────────────────────────────── -->
+  <script src="/assets/js/vendor/gridstack.min.js"></script>
+  <script src="/assets/js/vendor/echarts.min.js"></script>
+  <script src="/assets/js/vendor/handlebars.min.js"></script>
+  <script src="/assets/js/vendor/marked.min.js"></script>
+  <script src="/assets/js/vendor/dompurify.min.js"></script>
+  <script type="module" src="/assets/js/app.js"></script>
+</body>
+</html>
