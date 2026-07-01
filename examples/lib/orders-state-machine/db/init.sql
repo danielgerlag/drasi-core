@@ -84,7 +84,7 @@ ALTER TABLE shipments   REPLICA IDENTITY FULL;
 CREATE OR REPLACE PROCEDURE schedule_advance(p_order_id TEXT)
 LANGUAGE sql AS $$
     UPDATE orders o
-       SET next_stage_at = now() + INTERVAL '2 seconds'
+       SET next_stage_at = now() + INTERVAL '1 second'
      WHERE o.id = p_order_id
        AND o.next_stage_at IS NULL
        AND NOT EXISTS (
@@ -95,6 +95,11 @@ $$;
 -- Apply due advancements. For each order whose next_stage_at has elapsed, perform
 -- the single mutation that moves it to the next stage, then clear the schedule.
 -- Returns the number of orders advanced. Called by the example's pacing driver.
+-- Apply one due advancement per call. Advancing a single order per call (and
+-- touching its row at most once) keeps each CDC transaction to a single change,
+-- which the change stream and continuous queries handle reliably. The pacing
+-- driver calls this frequently (see the example's 1 Hz loop). Returns 1 if an
+-- order was advanced, else 0.
 CREATE OR REPLACE FUNCTION advance_due_orders()
 RETURNS INTEGER
 LANGUAGE plpgsql AS $$
@@ -105,29 +110,40 @@ BEGIN
     FOR r IN
         SELECT * FROM orders
          WHERE next_stage_at IS NOT NULL AND next_stage_at <= now()
-         FOR UPDATE
+         ORDER BY next_stage_at
+         LIMIT 1
+         FOR UPDATE SKIP LOCKED
     LOOP
+        -- Each branch performs the single mutation for the next stage and clears
+        -- the schedule. The orders row is touched at most once per advancement so
+        -- the CDC stream carries one clean change per stage (no collapsed
+        -- double-updates).
         IF r.is_draft = 1 THEN
             -- NEW -> CONFIRMED
-            UPDATE orders SET is_draft = 0 WHERE id = r.id;
+            UPDATE orders SET is_draft = 0, next_stage_at = NULL WHERE id = r.id;
         ELSIF NOT EXISTS (SELECT 1 FROM payments p WHERE p.order_id = r.id) THEN
             -- CONFIRMED -> PAID
             INSERT INTO payments (id, order_id, status)
             VALUES (r.id || '-pay', r.id, 'settled');
+            UPDATE orders SET next_stage_at = NULL WHERE id = r.id;
         ELSIF NOT EXISTS (SELECT 1 FROM stock_picks sp WHERE sp.order_id = r.id) THEN
             -- PAID -> PICKED
             INSERT INTO stock_picks (id, order_id) VALUES (r.id || '-pick', r.id);
+            UPDATE orders SET next_stage_at = NULL WHERE id = r.id;
         ELSIF NOT EXISTS (SELECT 1 FROM shipments s WHERE s.order_id = r.id) THEN
             -- PICKED -> SHIPPED
             INSERT INTO shipments (id, order_id, delivered) VALUES (r.id || '-ship', r.id, 0);
+            UPDATE orders SET next_stage_at = NULL WHERE id = r.id;
         ELSIF NOT EXISTS (
             SELECT 1 FROM shipments s WHERE s.order_id = r.id AND s.delivered = 1
         ) THEN
             -- SHIPPED -> DELIVERED
             UPDATE shipments SET delivered = 1 WHERE order_id = r.id;
+            UPDATE orders SET next_stage_at = NULL WHERE id = r.id;
+        ELSE
+            UPDATE orders SET next_stage_at = NULL WHERE id = r.id;
         END IF;
 
-        UPDATE orders SET next_stage_at = NULL WHERE id = r.id;
         n_count := n_count + 1;
     END LOOP;
     RETURN n_count;

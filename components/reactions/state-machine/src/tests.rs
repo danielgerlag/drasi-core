@@ -79,3 +79,4 @@ fn build_fails_without_source_id() {
         .build_pair();
     assert!(result.is_err());
 }
+

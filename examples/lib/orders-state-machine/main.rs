@@ -59,8 +59,7 @@ use drasi_lib::{DrasiLib, Query};
 use drasi_reaction_dashboard::{
     DashboardConfig, DashboardReaction, DashboardWidget, GridOptions, WidgetGrid,
 };
-use drasi_reaction_state_machine::config::{EnterCondition, Op, StateDef};
-use drasi_reaction_state_machine::StateMachineBuilder;
+use drasi_reaction_state_machine::{StateMachineBuilder, StateMachineReactionConfig};
 use drasi_reaction_storedproc_postgres::{PostgresStoredProcReaction, QueryConfig, TemplateSpec};
 use drasi_source_postgres::{PostgresReplicationSource, TableKeyConfig};
 use drasi_state_store_redb::RedbStateStoreProvider;
@@ -77,48 +76,95 @@ const STATE_SOURCE_ID: &str = "order-state-source";
 /// Tables the source ingests (each becomes a node label = the table name).
 const TABLES: &[&str] = &["orders", "payments", "stock_picks", "shipments"];
 
-/// (state id, stage query id, Cypher, previous states) for the six stages.
-/// Each query returns the owning order id as `orderId`; `draft-orders` also
-/// carries `customer`/`amount`, which the state machine retains across stages.
-const STAGES: &[(&str, &str, &str, &[&str])] = &[
-    (
-        "NEW",
-        "draft-orders",
-        "MATCH (o:orders) WHERE o.is_draft = 1 \
-         RETURN o.id AS orderId, o.customer AS customer, o.amount AS amount",
-        &[],
-    ),
-    (
-        "CONFIRMED",
-        "confirmed-orders",
-        "MATCH (o:orders) WHERE o.is_draft = 0 RETURN o.id AS orderId",
-        &["NEW"],
-    ),
-    (
-        "PAID",
-        "paid-orders",
-        "MATCH (p:payments) WHERE p.status = 'settled' RETURN p.order_id AS orderId",
-        &["CONFIRMED"],
-    ),
-    (
-        "PICKED",
-        "picked-orders",
-        "MATCH (s:stock_picks) RETURN s.order_id AS orderId",
-        &["PAID"],
-    ),
-    (
-        "SHIPPED",
-        "shipped-orders",
-        "MATCH (h:shipments) RETURN h.order_id AS orderId",
-        &["PICKED"],
-    ),
-    (
-        "DELIVERED",
-        "delivered-orders",
-        "MATCH (h:shipments) WHERE h.delivered = 1 RETURN h.order_id AS orderId",
-        &["SHIPPED"],
-    ),
-];
+/// The state machine, written exactly as it would appear in YAML configuration.
+///
+/// Each state lists the query whose results cause an order to enter it, the
+/// allowed `previous` states, the Handlebars `key` that extracts the order id
+/// from the result row, and the result `ops` that trigger the transition
+/// (insert-driven stages use `added`; the is_draft / delivered flag flips also
+/// use `updated`).
+const ORDER_STATE_MACHINE: &str = r#"
+sourceId: order-state-source
+entityLabel: OrderState
+keyField: orderId
+states:
+  - id: NEW
+    enter:
+      - query: draft-orders
+        previous: []
+        key: "{{orderId}}"
+        ops: [added]
+  - id: CONFIRMED
+    enter:
+      - query: confirmed-orders
+        previous: [NEW]
+        key: "{{orderId}}"
+        ops: [added, updated]
+  - id: PAID
+    enter:
+      - query: paid-orders
+        previous: [CONFIRMED]
+        key: "{{orderId}}"
+        ops: [added]
+  - id: PICKED
+    enter:
+      - query: picked-orders
+        previous: [PAID]
+        key: "{{orderId}}"
+        ops: [added]
+  - id: SHIPPED
+    enter:
+      - query: shipped-orders
+        previous: [PICKED]
+        key: "{{orderId}}"
+        ops: [added]
+  - id: DELIVERED
+    enter:
+      - query: delivered-orders
+        previous: [SHIPPED]
+        key: "{{orderId}}"
+        ops: [added, updated]
+"#;
+
+/// The six stage queries. Each is a single-entity query returning the owning
+/// order id as `orderId`; `draft-orders` also carries `customer`/`amount`, which
+/// the state machine retains across stages.
+fn stage_queries() -> Vec<drasi_lib::config::QueryConfig> {
+    let q = |id: &str, cypher: &str| {
+        Query::cypher(id)
+            .query(cypher)
+            .from_source(SOURCE_ID)
+            .auto_start(true)
+            .build()
+    };
+    vec![
+        q(
+            "draft-orders",
+            "MATCH (o:orders) WHERE o.is_draft = 1 \
+             RETURN o.id AS orderId, o.customer AS customer, o.amount AS amount",
+        ),
+        q(
+            "confirmed-orders",
+            "MATCH (o:orders) WHERE o.is_draft = 0 RETURN o.id AS orderId",
+        ),
+        q(
+            "paid-orders",
+            "MATCH (p:payments) WHERE p.status = 'settled' RETURN p.order_id AS orderId",
+        ),
+        q(
+            "picked-orders",
+            "MATCH (s:stock_picks) RETURN s.order_id AS orderId",
+        ),
+        q(
+            "shipped-orders",
+            "MATCH (h:shipments) RETURN h.order_id AS orderId",
+        ),
+        q(
+            "delivered-orders",
+            "MATCH (h:shipments) WHERE h.delivered = 1 RETURN h.order_id AS orderId",
+        ),
+    ]
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -168,54 +214,37 @@ async fn main() -> Result<()> {
     // -------------------------------------------------------------------------
     // 2. The six stage queries
     // -------------------------------------------------------------------------
-    let stage_queries: Vec<_> = STAGES
-        .iter()
-        .map(|(_, query_id, cypher, _)| {
-            Query::cypher(*query_id)
-                .query(*cypher)
-                .from_source(SOURCE_ID)
-                .auto_start(true)
-                .build()
-        })
-        .collect();
+    let stage_queries = stage_queries();
 
     // -------------------------------------------------------------------------
-    // 3. State machine reaction + companion source
+    // 3. State machine reaction (order-state) + companion source
+    //    (order-state-source), configured declaratively from the YAML above.
     // -------------------------------------------------------------------------
-    let mut sm_builder = StateMachineBuilder::new("order-state")
-        .with_source_id(STATE_SOURCE_ID)
-        .with_entity_label("OrderState")
-        .with_key_field("orderId");
-    for (state_id, query_id, _, previous) in STAGES {
-        sm_builder = sm_builder.with_state(StateDef {
-            id: state_id.to_string(),
-            enter: vec![EnterCondition {
-                query: query_id.to_string(),
-                previous: previous.iter().map(|s| s.to_string()).collect(),
-                key: "{{orderId}}".to_string(),
-                // Insert-driven stages arrive as `added`; the is_draft/delivered
-                // flag flips arrive as `updated` — accept both.
-                ops: vec![Op::Added, Op::Updated],
-            }],
-        });
-    }
-    let (sm_reaction, sm_source) = sm_builder.build_pair()?;
+    let order_state_machine: StateMachineReactionConfig =
+        serde_yaml::from_str(ORDER_STATE_MACHINE).expect("valid state machine config");
+    let (sm_reaction, sm_source) = StateMachineBuilder::new("order-state")
+        .with_config(order_state_machine)
+        .build_pair()?;
 
     // -------------------------------------------------------------------------
     // 4. Stored-procedure reaction: drives orders forward. When an order enters a
     //    stage, schedule its next advancement.
     // -------------------------------------------------------------------------
-    let mut driver_builder = PostgresStoredProcReaction::builder("order-advancer")
+    let driver = PostgresStoredProcReaction::builder("order-advancer")
         .with_connection(PG_HOST, PG_PORT, PG_DB, PG_USER, PG_PASSWORD)
         .with_default_template(QueryConfig {
             added: Some(TemplateSpec::new("CALL schedule_advance(@after.orderId)")),
             updated: Some(TemplateSpec::new("CALL schedule_advance(@after.orderId)")),
             deleted: None,
-        });
-    for (_, query_id, _, _) in STAGES {
-        driver_builder = driver_builder.with_query(*query_id);
-    }
-    let driver = driver_builder.build().await?;
+        })
+        .with_query("draft-orders")
+        .with_query("confirmed-orders")
+        .with_query("paid-orders")
+        .with_query("picked-orders")
+        .with_query("shipped-orders")
+        .with_query("delivered-orders")
+        .build()
+        .await?;
 
     // -------------------------------------------------------------------------
     // 5. Dashboard queries over the state source + dashboard reaction
@@ -283,8 +312,8 @@ async fn main() -> Result<()> {
     println!("├──────────────────────────────────────────────┤");
     println!("│ 🌐 Dashboard:  http://localhost:3000          │");
     println!("│ 🗄  Postgres:   localhost:5432 (db: drasi)     │");
-    println!("│ Orders advance one stage roughly every 2 s.   │");
-    println!("│ A new order is seeded every 6 s.              │");
+    println!("│ Orders advance one stage roughly every 1 s.   │");
+    println!("│ A new order is seeded every 8 s.              │");
     println!("├──────────────────────────────────────────────┤");
     println!("│ Press Ctrl+C to stop                          │");
     println!("└──────────────────────────────────────────────┘\n");
@@ -312,7 +341,7 @@ async fn connect() -> Result<tokio_postgres::Client> {
     Ok(client)
 }
 
-/// Apply due stage advancements every second so orders progress visibly.
+/// Apply due stage advancements twice a second so orders progress visibly.
 async fn pacing_driver() {
     let client = match connect().await {
         Ok(c) => c,
@@ -321,7 +350,7 @@ async fn pacing_driver() {
             return;
         }
     };
-    let mut interval = tokio::time::interval(Duration::from_secs(1));
+    let mut interval = tokio::time::interval(Duration::from_millis(500));
     loop {
         interval.tick().await;
         if let Err(e) = client.execute("SELECT advance_due_orders()", &[]).await {
@@ -348,7 +377,7 @@ async fn order_seeder() {
         "Stark Ind",
     ];
     let mut n = 1u64;
-    let mut interval = tokio::time::interval(Duration::from_secs(6));
+    let mut interval = tokio::time::interval(Duration::from_secs(8));
     loop {
         interval.tick().await;
         let id = format!("order-{n}");

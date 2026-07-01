@@ -41,15 +41,17 @@ source delivers as clean node additions.
 
 1. A new order is inserted (`is_draft = 1`). `draft-orders` matches → the state
    machine sets it **NEW**; the stored-proc reaction schedules an advancement
-   (`orders.next_stage_at = now() + 2s`).
-2. The **pacing driver** (a 1 Hz loop in `main.rs`) calls `advance_due_orders()`,
-   which performs the next stage's mutation (flip `is_draft`, or insert a
-   payment / stock pick / shipment, or set `delivered`).
+   (`orders.next_stage_at = now() + 1s`).
+2. The **pacing driver** (a 2 Hz loop in `main.rs`) calls `advance_due_orders()`,
+   which advances **one** due order by one stage (flip `is_draft`, or insert a
+   payment / stock pick / shipment, or set `delivered`), touching the order row at
+   most once so each CDC transaction carries a single clean change.
 3. That change flows back through Postgres CDC → the next stage query matches →
    the state machine transitions the order and the stored-proc reaction schedules
    the next step.
-4. Steps 2–3 repeat until the order is **DELIVERED** (~3 s per stage). A seeder
-   task inserts a fresh order every 6 seconds.
+4. Steps 2–3 repeat until the order is **DELIVERED** (~1–2 s per stage). A seeder
+   task inserts a fresh order every 8 seconds, keeping only a couple of orders in
+   flight at once.
 
 ## Durability
 
@@ -90,6 +92,10 @@ docker compose down -v        # tear down the database when finished
 
 ## Notes
 
+- **The state machine is configured declaratively.** In `main.rs` the reaction is
+  defined as literal YAML (the `ORDER_STATE_MACHINE` constant) and deserialized into
+  the config — exactly the shape you would put in a Drasi YAML file (`sourceId`,
+  `entityLabel`, `keyField`, and a `states` list with `enter` conditions).
 - **Integer flags, not booleans.** `orders.is_draft` and `shipments.delivered` are
   modelled as `SMALLINT` (0/1) rather than `BOOLEAN`. The Drasi Postgres CDC source
   currently mis-decodes streamed `BOOLEAN` values (they always decode as `true`),
@@ -97,6 +103,11 @@ docker compose down -v        # tear down the database when finished
   correctly. Tracked upstream in
   [drasi-project/drasi-core#611](https://github.com/drasi-project/drasi-core/issues/611);
   once fixed, the flags can be plain booleans.
+- **One change per advancement.** `advance_due_orders()` advances a single order by
+  a single stage per call and touches each row at most once, so every CDC
+  transaction carries one clean change. This keeps the continuous queries reliable
+  under the self-driving load (batched multi-row updates in one transaction can be
+  collapsed on the stream).
 - **No seed data / start with a fresh DB.** The seeder inserts orders live so they
   animate through the full lifecycle. Rows that exist before startup arrive via
   bootstrap, which reactions do not observe, so they would not advance. Use
@@ -104,3 +115,4 @@ docker compose down -v        # tear down the database when finished
 - The Drasi Postgres source auto-creates its replication slot, so `init.sql`
   deliberately does **not** pre-create one (doing so would replay seed rows on top
   of the bootstrap snapshot and double the data).
+
